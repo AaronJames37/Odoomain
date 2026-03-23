@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="mrp_production_form_view_tp_cutlist" model="ir.ui.view">
+        <field name="name">mrp.production.form.tp.cutlist</field>
+        <field name="model">mrp.production</field>
+        <field name="inherit_id" ref="mrp.mrp_production_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form/header" position="inside">
+                <button name="action_run_tp_nesting" type="object" string="Run Nesting" class="btn-primary" invisible="state in ['done', 'cancel']"/>
+                <button name="action_rerun_tp_nesting" type="object" string="Re-run Nesting" class="btn-secondary" invisible="state in ['done', 'cancel']"/>
+                <button
+                    name="action_tp_undo_produce_all"
+                    type="object"
+                    string="Undo Produce All"
+                    class="btn-secondary"
+                    confirm="This will reverse the produced quantity and roll back nesting-generated offcuts/waste for this MO. Continue?"
+                    invisible="state != 'done' or not tp_last_nesting_run_id"
+                />
+            </xpath>
+            <xpath expr="//group[@name='group_extra_info']/field[@name='user_id']" position="after">
+                <field name="x_tp_source_so_line_id" readonly="1"/>
+                <field name="tp_scope_cut_count" readonly="1"/>
+                <field name="tp_last_nesting_run_id" readonly="1"/>
+                <field name="tp_last_nesting_job_id" readonly="1"/>
+                <field name="tp_nesting_state" readonly="1"/>
+            </xpath>
+            <xpath expr="//notebook" position="inside">
+                <page string="Cut Scope">
+                    <group>
+                        <field name="tp_scope_cut_summary" readonly="1" widget="text"/>
+                    </group>
+                    <group>
+                        <field name="tp_cut_line_ids" readonly="1">
+                            <list>
+                                <field name="source_so_line_id"/>
+                                <field name="width_mm"/>
+                                <field name="height_mm"/>
+                                <field name="quantity"/>
+                            </list>
+                        </field>
+                    </group>
+                </page>
+                <page string="Nesting">
+                    <group string="Source Pool Preview (Before Run)">
+                        <field name="tp_source_pool_preview" widget="html" readonly="1"/>
+                    </group>
+                    <group>
+                        <field name="tp_last_nesting_svg" widget="html" readonly="1"/>
+                    </group>
+                    <group string="Produced Panels (Final Job Components)">
+                        <field name="tp_last_produced_panel_ids" readonly="1">
+                            <list>
+                                <field name="allocation_id"/>
+                                <field name="source_lot_id"/>
+                                <field name="width_mm"/>
+                                <field name="height_mm"/>
+                                <field name="quantity"/>
+                            </list>
+                        </field>
+                    </group>
+                    <group string="Produced Offcuts">
+                        <field name="tp_last_produced_offcut_ids" readonly="1" domain="[('planned_kind', '=', 'offcut')]">
+                            <list>
+                                <field name="state"/>
+                                <field name="planned_kind"/>
+                                <field name="offcut_id"/>
+                                <field name="lot_id"/>
+                                <field name="width_mm"/>
+                                <field name="height_mm"/>
+                                <field name="source_type"/>
+                            </list>
+                        </field>
+                    </group>
+                    <field name="tp_last_nesting_allocation_ids" readonly="1">
+                        <list>
+                            <field name="run_id"/>
+                            <field name="job_id"/>
+                            <field name="source_type"/>
+                            <field name="source_offcut_id"/>
+                            <field name="source_sheet_format_id"/>
+                            <field name="source_lot_id"/>
+                            <field name="source_bin_key"/>
+                            <field name="cut_width_mm"/>
+                            <field name="cut_height_mm"/>
+                            <field name="placed_x_mm"/>
+                            <field name="placed_y_mm"/>
+                            <field name="cut_quantity"/>
+                            <field name="rotation_applied"/>
+                            <field name="allocated_area_mm2"/>
+                            <field name="status"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

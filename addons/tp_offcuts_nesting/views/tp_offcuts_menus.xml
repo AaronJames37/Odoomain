@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem
+        id="menu_tp_offcuts_root"
+        name="Offcut Manager"
+        action="server_action_tp_offcut_operational_dashboard_open_current"
+        sequence="10"
+    />
+    <menuitem id="menu_tp_offcut_dashboard" name="Operations Dashboard" parent="menu_tp_offcuts_root" action="server_action_tp_offcut_operational_dashboard_open_current" sequence="5"/>
+    <menuitem id="menu_tp_offcut_inventory" name="Offcuts Inventory" parent="menu_tp_offcuts_root" action="action_tp_offcut" sequence="15"/>
+    <menuitem id="menu_tp_offcuts_config" name="Configuration" parent="menu_tp_offcuts_root" sequence="90"/>
+    <menuitem id="menu_tp_offcut_bin_rules" name="BIN Rules" parent="menu_tp_offcuts_config" action="action_tp_offcut_bin_rule" sequence="10"/>
+    <menuitem id="menu_tp_offcut_valuation_events" name="Valuation Events" parent="menu_tp_offcuts_root" action="action_tp_offcut_valuation_event" sequence="19"/>
+    <menuitem id="menu_tp_offcut_waste_records" name="Waste Records" parent="menu_tp_offcuts_root" action="action_tp_offcut_waste" sequence="20"/>
+    <menuitem
+        id="menu_tp_offcuts_settings"
+        name="Settings"
+        parent="menu_tp_offcuts_root"
+        action="action_tp_offcuts_settings"
+        sequence="95"
+        groups="base.group_system"
+    />
+</odoo>

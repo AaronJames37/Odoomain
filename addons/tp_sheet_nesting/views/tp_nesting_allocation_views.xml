@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_tp_nesting_allocation_tree" model="ir.ui.view">
+        <field name="name">tp.nesting.allocation.list</field>
+        <field name="model">tp.nesting.allocation</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="run_id"/>
+                <field name="job_id"/>
+                <field name="mo_id"/>
+                <field name="source_type"/>
+                <field name="source_offcut_id"/>
+                <field name="source_sheet_format_id"/>
+                <field name="source_lot_id"/>
+                <field name="source_bin_key"/>
+                <field name="cut_width_mm"/>
+                <field name="cut_height_mm"/>
+                <field name="placed_x_mm"/>
+                <field name="placed_y_mm"/>
+                <field name="cut_quantity"/>
+                <field name="rotation_applied"/>
+                <field name="allocated_area_mm2"/>
+                <field name="status"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_tp_nesting_allocation_form" model="ir.ui.view">
+        <field name="name">tp.nesting.allocation.form</field>
+        <field name="model">tp.nesting.allocation</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="run_id"/>
+                            <field name="job_id"/>
+                            <field name="mo_id" readonly="1"/>
+                            <field name="status"/>
+                        </group>
+                        <group>
+                            <field name="source_type"/>
+                            <field name="source_offcut_id" invisible="source_type != 'offcut'"/>
+                            <field name="source_sheet_format_id" invisible="source_type != 'sheet'"/>
+                            <field name="source_lot_id"/>
+                            <field name="source_bin_key"/>
+                            <field name="source_bin_label"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="cut_width_mm"/>
+                        <field name="cut_height_mm"/>
+                        <field name="placed_x_mm"/>
+                        <field name="placed_y_mm"/>
+                        <field name="cut_quantity"/>
+                        <field name="rotation_applied"/>
+                        <field name="allocated_area_mm2"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_tp_nesting_allocation_search" model="ir.ui.view">
+        <field name="name">tp.nesting.allocation.search</field>
+        <field name="model">tp.nesting.allocation</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="run_id"/>
+                <field name="mo_id"/>
+                <field name="source_type"/>
+                <field name="status"/>
+                <filter string="Offcut Source" name="source_offcut" domain="[('source_type', '=', 'offcut')]"/>
+                <filter string="Sheet Source" name="source_sheet" domain="[('source_type', '=', 'sheet')]"/>
+                <group>
+                    <filter string="By MO" name="group_mo" context="{'group_by': 'mo_id'}"/>
+                    <filter string="By Run" name="group_run" context="{'group_by': 'run_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_tp_nesting_allocation" model="ir.actions.act_window">
+        <field name="name">Nesting Allocations</field>
+        <field name="res_model">tp.nesting.allocation</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_tp_nesting_allocation_search"/>
+    </record>
+</odoo>

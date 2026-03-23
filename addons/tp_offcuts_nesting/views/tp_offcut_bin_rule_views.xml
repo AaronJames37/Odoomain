@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_tp_offcut_bin_rule_tree" model="ir.ui.view">
+        <field name="name">tp.offcut.bin.rule.list</field>
+        <field name="model">tp.offcut.bin.rule</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="active"/>
+                <field name="min_width_mm"/>
+                <field name="min_height_mm"/>
+                <field name="bin_location_id"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_tp_offcut_bin_rule_form" model="ir.ui.view">
+        <field name="name">tp.offcut.bin.rule.form</field>
+        <field name="model">tp.offcut.bin.rule</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="active"/>
+                        <field name="sequence"/>
+                    </group>
+                    <group>
+                        <field name="min_width_mm"/>
+                        <field name="min_height_mm"/>
+                        <field name="bin_location_id"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_tp_offcut_bin_rule" model="ir.actions.act_window">
+        <field name="name">BIN Rules</field>
+        <field name="res_model">tp.offcut.bin.rule</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>

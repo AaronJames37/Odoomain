@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form_tp_sheet_nesting" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.tp.sheet.nesting</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="stock.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//app[@name='stock']" position="after">
+                <app data-string="Sheet Nesting" string="Sheet Nesting" name="tp_sheet_nesting" logo="/tp_sheet_nesting/static/description/settings_icon.svg" groups="mrp.group_mrp_manager">
+                    <block title="Optimizer" name="tp_sheet_nesting_settings_container">
+                        <setting id="tp_nesting_engine_mode_setting" help="Select optimal engine or deterministic fallback.">
+                            <field name="tp_nesting_engine_mode"/>
+                        </setting>
+                        <setting id="tp_nesting_timeout_setting" help="Maximum optimization time before fallback.">
+                            <field name="tp_nesting_timeout_ms"/>
+                        </setting>
+                        <setting id="tp_nesting_sheet_size_candidate_limit_setting" help="Maximum sheet-size candidates evaluated by the optimal engine.">
+                            <field name="tp_nesting_sheet_size_candidate_limit"/>
+                        </setting>
+                        <setting id="tp_nesting_beam_width_setting" help="Beam search width for optimal mode global search.">
+                            <field name="tp_nesting_beam_width"/>
+                        </setting>
+                        <setting id="tp_nesting_branch_cap_setting" help="Maximum branch expansions kept per beam-search depth.">
+                            <field name="tp_nesting_branch_cap"/>
+                        </setting>
+                        <setting id="tp_nesting_max_piece_count_setting" help="Hard limit on cut pieces accepted by optimizer for one run.">
+                            <field name="tp_nesting_max_piece_count"/>
+                        </setting>
+                        <setting id="tp_nesting_beam_width_cap_setting" help="Hard cap applied to beam width and branch cap guardrails.">
+                            <field name="tp_nesting_beam_width_cap"/>
+                        </setting>
+                        <setting id="tp_nesting_timeout_cap_ms_setting" help="Maximum allowed positive timeout for optimizer runs.">
+                            <field name="tp_nesting_timeout_cap_ms"/>
+                        </setting>
+                        <setting id="tp_nesting_policy_preset_setting" help="Optimizer scoring preset: yield, cost, or offcut reuse priority.">
+                            <field name="tp_nesting_policy_preset"/>
+                        </setting>
+                        <setting id="tp_nesting_waste_priority_setting" help="Weight multiplier for waste minimization.">
+                            <field name="tp_nesting_waste_priority"/>
+                        </setting>
+                        <setting id="tp_nesting_offcut_reuse_priority_setting" help="Weight multiplier for sheet-lot/offcut reuse preference.">
+                            <field name="tp_nesting_offcut_reuse_priority"/>
+                        </setting>
+                        <setting id="tp_nesting_sheet_count_penalty_setting" help="Weight multiplier penalizing additional full-sheet usage.">
+                            <field name="tp_nesting_sheet_count_penalty"/>
+                        </setting>
+                        <setting id="tp_nesting_cost_sensitivity_setting" help="Weight multiplier for material cost sensitivity.">
+                            <field name="tp_nesting_cost_sensitivity"/>
+                        </setting>
+                        <setting id="tp_nesting_debug_enabled_setting" help="Persist optimizer candidate diagnostics and decision rationale JSON on each run.">
+                            <field name="tp_nesting_debug_enabled"/>
+                        </setting>
+                        <setting id="tp_nesting_exact_refinement_enabled_setting" help="Enable exact/near-exact refinement for small jobs.">
+                            <field name="tp_nesting_exact_refinement_enabled"/>
+                        </setting>
+                        <setting id="tp_nesting_exact_refinement_cut_threshold_setting" help="Maximum cut count eligible for exact refinement.">
+                            <field name="tp_nesting_exact_refinement_cut_threshold"/>
+                        </setting>
+                        <setting id="tp_nesting_exact_refinement_timeout_ms_setting" help="Hard timeout for exact refinement pass.">
+                            <field name="tp_nesting_exact_refinement_timeout_ms"/>
+                        </setting>
+                        <setting id="tp_nesting_kernel_name_setting" help="Placement kernel used by the nesting engine.">
+                            <field name="tp_nesting_kernel_name"/>
+                        </setting>
+                        <setting id="tp_nesting_fallback_setting" help="If enabled, fallback to deterministic on optimizer timeout/error.">
+                            <field name="tp_nesting_fallback_enabled"/>
+                        </setting>
+                    </block>
+                </app>
+            </xpath>
+        </field>
+    </record>
+</odoo>

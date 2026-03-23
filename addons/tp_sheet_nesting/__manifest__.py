@@ -1,0 +1,30 @@
+{
+    "name": "Sheet Nesting",
+    "summary": "Cut list to MO nesting orchestration and optimization",
+    "version": "19.0.1.0.0",
+    "author": "TP",
+    "license": "LGPL-3",
+    "depends": ["base", "sale", "sale_mrp", "mrp", "stock", "account", "tp_offcuts_nesting"],
+    "data": [
+        "data/ir_sequence_data.xml",
+        "security/ir.model.access.csv",
+        "views/sale_order_line_views.xml",
+        "views/sale_order_views.xml",
+        "views/mrp_production_views.xml",
+        "views/res_config_settings_views.xml",
+        "views/tp_sheet_format_views.xml",
+        "views/tp_nesting_run_views.xml",
+        "views/tp_nesting_job_views.xml",
+        "views/tp_nesting_allocation_views.xml",
+        "views/tp_nesting_source_map_views.xml",
+        "views/tp_nesting_benchmark_views.xml",
+        "views/tp_offcut_traceability_views.xml",
+        "views/product_template_views.xml",
+        "views/tp_sheet_nesting_settings_actions.xml",
+        "views/tp_sheet_nesting_menus.xml",
+        "views/tp_sheet_nesting_menu_icons.xml"
+    ],
+    "installable": True,
+    "application": True,
+    "post_init_hook": "post_init_hook"
+}

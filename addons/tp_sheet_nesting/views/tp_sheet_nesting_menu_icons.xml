@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="menu_tp_sheet_nesting_root" model="ir.ui.menu">
+        <field name="web_icon">tp_sheet_nesting,static/description/app_icon.png</field>
+    </record>
+    <record id="menu_tp_sheet_nesting_settings" model="ir.ui.menu">
+        <field name="web_icon">tp_sheet_nesting,static/description/settings_icon.svg</field>
+    </record>
+</odoo>

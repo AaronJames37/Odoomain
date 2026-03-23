@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="tp_storefront_settings_default" model="tp.storefront.settings">
+        <field name="company_id" ref="base.main_company"/>
+        <field name="site_name">Cut My Plastic</field>
+        <field name="site_tagline">Cut-to-size plastics</field>
+    </record>
+</odoo>

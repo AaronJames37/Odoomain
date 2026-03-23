@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_tp_nesting_benchmark_tree" model="ir.ui.view">
+        <field name="name">tp.nesting.benchmark.tree</field>
+        <field name="model">tp.nesting.benchmark</field>
+        <field name="arch" type="xml">
+            <list string="Nesting Benchmarks">
+                <field name="name"/>
+                <field name="demand_product_id"/>
+                <field name="repeat_count"/>
+                <field name="deterministic_stable"/>
+                <field name="optimal_stable"/>
+                <field name="last_run_at"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_tp_nesting_benchmark_form" model="ir.ui.view">
+        <field name="name">tp.nesting.benchmark.form</field>
+        <field name="model">tp.nesting.benchmark</field>
+        <field name="arch" type="xml">
+            <form string="Nesting Benchmark">
+                <header>
+                    <button name="action_run_benchmark" string="Run Benchmark" type="object" class="btn-primary"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="active"/>
+                            <field name="demand_product_id"/>
+                            <field name="bom_id"/>
+                            <field name="repeat_count"/>
+                        </group>
+                        <group>
+                            <field name="last_run_at" readonly="1"/>
+                            <field name="last_batch_token" readonly="1"/>
+                            <field name="deterministic_stable" readonly="1"/>
+                            <field name="optimal_stable" readonly="1"/>
+                            <field name="deterministic_hash" readonly="1"/>
+                            <field name="optimal_hash" readonly="1"/>
+                        </group>
+                    </group>
+                    <field name="note" placeholder="Optional benchmark notes"/>
+                    <notebook>
+                        <page string="Cut Lines">
+                            <field name="cut_line_ids">
+                                <list editable="bottom">
+                                    <field name="sequence"/>
+                                    <field name="width_mm"/>
+                                    <field name="height_mm"/>
+                                    <field name="quantity"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Source Lines">
+                            <field name="source_line_ids">
+                                <list editable="bottom">
+                                    <field name="sequence"/>
+                                    <field name="source_type"/>
+                                    <field name="name"/>
+                                    <field name="product_id"/>
+                                    <field name="width_mm"/>
+                                    <field name="height_mm"/>
+                                    <field name="landed_cost"/>
+                                    <field name="remaining_value"/>
+                                    <field name="available_qty"/>
+                                    <field name="auto_map"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Results">
+                            <field name="result_ids" readonly="1">
+                                <list create="0" delete="0">
+                                    <field name="name"/>
+                                    <field name="batch_token"/>
+                                    <field name="engine_mode"/>
+                                    <field name="run_sequence"/>
+                                    <field name="repeat_count"/>
+                                    <field name="success"/>
+                                    <field name="run_hash"/>
+                                    <field name="allocation_count"/>
+                                    <field name="waste_area_mm2_total"/>
+                                    <field name="waste_pct"/>
+                                    <field name="offcut_utilization_pct"/>
+                                    <field name="full_sheet_count"/>
+                                    <field name="search_ms"/>
+                                    <field name="search_nodes"/>
+                                    <field name="score"/>
+                                    <field name="error_message"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_tp_nesting_benchmark" model="ir.actions.act_window">
+        <field name="name">Nesting Benchmarks</field>
+        <field name="res_model">tp.nesting.benchmark</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p>
+                Build reproducible optimizer fixtures and compare deterministic vs optimal KPIs.
+            </p>
+        </field>
+    </record>
+</odoo>

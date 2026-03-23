@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_tp_offcut_operational_dashboard_tree" model="ir.ui.view">
+        <field name="name">tp.offcut.operational.dashboard.list</field>
+        <field name="model">tp.offcut.operational.dashboard</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="company_id"/>
+                <field name="as_of"/>
+                <field name="total_offcut_count"/>
+                <field name="available_offcut_count"/>
+                <field name="reserved_offcut_count"/>
+                <field name="sold_offcut_count"/>
+                <field name="sold_cleanup_due_count"/>
+                <field name="inventory_value_total"/>
+                <field name="waste_area_last_30d"/>
+                <field name="waste_value_last_30d"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_tp_offcut_operational_dashboard_form" model="ir.ui.view">
+        <field name="name">tp.offcut.operational.dashboard.form</field>
+        <field name="model">tp.offcut.operational.dashboard</field>
+        <field name="arch" type="xml">
+            <form create="0" edit="0" delete="0" class="o_tp_offcut_dashboard">
+                <header>
+                    <button name="action_refresh" type="object" string="Refresh" class="btn-primary"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>Offcut Operations Dashboard</h1>
+                        <p class="text-muted">Click any card to drill into live records.</p>
+                    </div>
+
+                    <group>
+                        <group>
+                            <field name="company_id" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="as_of" readonly="1"/>
+                        </group>
+                    </group>
+
+                    <div class="oe_button_box o_tp_dashboard_stat_box" name="button_box">
+                        <button class="oe_stat_button o_tp_stat_total" icon="fa-th-large" name="action_open_total_offcuts" type="object">
+                            <field name="total_offcut_count" widget="statinfo" string="Total Offcuts"/>
+                        </button>
+                        <button class="oe_stat_button o_tp_stat_available" icon="fa-check-circle" name="action_open_available_offcuts" type="object">
+                            <field name="available_offcut_count" widget="statinfo" string="Available"/>
+                        </button>
+                        <button class="oe_stat_button o_tp_stat_reserved" icon="fa-lock" name="action_open_reserved_offcuts" type="object">
+                            <field name="reserved_offcut_count" widget="statinfo" string="Reserved"/>
+                        </button>
+                        <button class="oe_stat_button o_tp_stat_in_use" icon="fa-cogs" name="action_open_in_use_offcuts" type="object">
+                            <field name="in_use_offcut_count" widget="statinfo" string="In Use"/>
+                        </button>
+                        <button class="oe_stat_button o_tp_stat_sold" icon="fa-shopping-cart" name="action_open_sold_offcuts" type="object">
+                            <field name="sold_offcut_count" widget="statinfo" string="Sold"/>
+                        </button>
+                        <button class="oe_stat_button o_tp_stat_inactive" icon="fa-archive" name="action_open_inactive_offcuts" type="object">
+                            <field name="inactive_offcut_count" widget="statinfo" string="Inactive"/>
+                        </button>
+                        <button class="oe_stat_button o_tp_stat_cleanup" icon="fa-exclamation-triangle" name="action_open_cleanup_due_offcuts" type="object">
+                            <field name="sold_cleanup_due_count" widget="statinfo" string="Cleanup Due"/>
+                        </button>
+                        <button class="oe_stat_button o_tp_stat_waste" icon="fa-trash" name="action_open_waste_last_30d" type="object">
+                            <field name="waste_record_count_last_30d" widget="statinfo" string="Waste (30d)"/>
+                        </button>
+                        <button class="oe_stat_button o_tp_stat_mo" icon="fa-industry" name="action_open_reserved_mos" type="object">
+                            <field name="reserved_mo_count" widget="statinfo" string="Reserved MOs"/>
+                        </button>
+                    </div>
+
+                    <group string="State Mix">
+                        <field name="available_pct" string="Available %" readonly="1" widget="progressbar" options="{'max_value': 100}"/>
+                        <field name="reserved_pct" string="Reserved %" readonly="1" widget="progressbar" options="{'max_value': 100}"/>
+                        <field name="in_use_pct" string="In Use %" readonly="1" widget="progressbar" options="{'max_value': 100}"/>
+                        <field name="sold_pct" string="Sold %" readonly="1" widget="progressbar" options="{'max_value': 100}"/>
+                        <field name="inactive_pct" string="Inactive %" readonly="1" widget="progressbar" options="{'max_value': 100}"/>
+                    </group>
+
+                    <group string="Operational KPIs">
+                        <field name="inventory_value_total" readonly="1"/>
+                        <field name="waste_area_last_30d" readonly="1"/>
+                        <field name="waste_value_last_30d" readonly="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_tp_offcut_operational_dashboard" model="ir.actions.act_window">
+        <field name="name">Operations Dashboard</field>
+        <field name="res_model">tp.offcut.operational.dashboard</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{}</field>
+    </record>
+
+    <record id="server_action_tp_offcut_operational_dashboard_open_current" model="ir.actions.server">
+        <field name="name">Operations Dashboard</field>
+        <field name="model_id" ref="model_tp_offcut_operational_dashboard"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_open_current_company_dashboard()</field>
+    </record>
+</odoo>

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_tp_offcut_tree_traceability_sheet_nesting" model="ir.ui.view">
+        <field name="name">tp.offcut.list.traceability.sheet.nesting</field>
+        <field name="model">tp.offcut</field>
+        <field name="inherit_id" ref="tp_offcuts_nesting.view_tp_offcut_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//list/field[@name='reserved_mo_id']" position="after">
+                <field name="produced_in_mo_id" optional="show"/>
+                <field name="consumed_in_mo_id" optional="show"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_tp_offcut_form_traceability_sheet_nesting" model="ir.ui.view">
+        <field name="name">tp.offcut.form.traceability.sheet.nesting</field>
+        <field name="model">tp.offcut</field>
+        <field name="inherit_id" ref="tp_offcuts_nesting.view_tp_offcut_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='damaged_at']" position="after">
+                <field name="produced_in_mo_id" readonly="1"/>
+                <field name="produced_in_run_id" readonly="1"/>
+                <field name="consumed_in_mo_id" readonly="1"/>
+                <field name="consumed_in_run_id" readonly="1"/>
+                <field name="consumed_at" readonly="1"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_tp_offcut_search_traceability_sheet_nesting" model="ir.ui.view">
+        <field name="name">tp.offcut.search.traceability.sheet.nesting</field>
+        <field name="model">tp.offcut</field>
+        <field name="inherit_id" ref="tp_offcuts_nesting.view_tp_offcut_search"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search/field[@name='reserved_mo_id']" position="after">
+                <field name="produced_in_mo_id"/>
+                <field name="consumed_in_mo_id"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

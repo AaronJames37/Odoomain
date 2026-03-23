@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_product_template_form_tp_storefront_top_level" model="ir.ui.view">
+        <field name="name">product.template.form.tp.storefront.top.level</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_only_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet/notebook" position="inside">
+                <page string="Top Level Pricing">
+                    <group>
+                        <group>
+                            <field name="tp_is_top_level_product"/>
+                            <field name="tp_use_price_per_sqm" invisible="not tp_is_top_level_product"/>
+                        </group>
+                        <group>
+                            <field name="tp_sheet_area_sqm" readonly="1"/>
+                            <field name="tp_estimated_full_sheet_price" readonly="1"/>
+                            <field name="tp_top_level_thickness_count" readonly="1" invisible="not tp_is_top_level_product"/>
+                        </group>
+                    </group>
+                    <group string="Thickness Mapping" invisible="not tp_is_top_level_product">
+                        <field name="tp_top_level_thickness_map_ids" nolabel="1">
+                            <list editable="bottom">
+                                <field name="sequence"/>
+                                <field name="active"/>
+                                <field name="source_product_id"/>
+                                <field name="thickness_label" readonly="1"/>
+                                <field name="source_sheet_area_sqm" readonly="1"/>
+                                <field name="source_sheet_sales_price" readonly="1"/>
+                                <field name="effective_price_per_sqm" readonly="1"/>
+                                <field name="note"/>
+                            </list>
+                        </field>
+                    </group>
+                </page>
+                <page string="SEO" invisible="not tp_is_top_level_product">
+                    <group string="Search Engine">
+                        <group>
+                            <field name="tp_seo_title"/>
+                            <field name="tp_seo_slug"/>
+                            <field name="tp_canonical_url"/>
+                        </group>
+                        <group>
+                            <field name="tp_meta_keywords"/>
+                            <field name="tp_robots_index"/>
+                            <field name="tp_robots_follow"/>
+                            <field name="tp_schema_product_enabled"/>
+                        </group>
+                    </group>
+                    <group string="Meta Description">
+                        <field name="tp_meta_description"/>
+                    </group>
+                    <group string="Open Graph">
+                        <group>
+                            <field name="tp_og_title"/>
+                            <field name="tp_og_image_url"/>
+                        </group>
+                        <group>
+                            <field name="tp_og_description"/>
+                        </group>
+                    </group>
+                    <group string="Twitter">
+                        <group>
+                            <field name="tp_twitter_title"/>
+                        </group>
+                        <group>
+                            <field name="tp_twitter_description"/>
+                        </group>
+                    </group>
+                </page>
+                <page string="Storefront">
+                    <group string="Storefront Content">
+                        <field
+                            name="tp_storefront_short_description"
+                            placeholder="Short product summary shown below the product title on the storefront."
+                            invisible="not tp_is_top_level_product"
+                        />
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="action_tp_storefront_products" model="ir.actions.act_window">
+        <field name="name">Storefront Products</field>
+        <field name="res_model">product.template</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[("sale_ok", "=", True)]</field>
+        <field name="context">{}</field>
+    </record>
+</odoo>

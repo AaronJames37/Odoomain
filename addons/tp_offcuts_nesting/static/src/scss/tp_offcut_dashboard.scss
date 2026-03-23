@@ -1,0 +1,69 @@
+.o_tp_offcut_dashboard {
+    .o_tp_dashboard_stat_box {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .o_tp_dashboard_stat_box .oe_stat_button {
+        min-width: 170px;
+        border-radius: 12px;
+        border: 1px solid #d5dde7;
+        background: linear-gradient(180deg, #ffffff 0%, #f5f8fb 100%);
+        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+        transition: transform 120ms ease, box-shadow 120ms ease;
+    }
+
+    .o_tp_dashboard_stat_box .oe_stat_button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.1);
+    }
+
+    .o_tp_dashboard_stat_box .oe_stat_button .o_stat_text {
+        color: #344255;
+        font-weight: 600;
+    }
+
+    .o_tp_dashboard_stat_box .oe_stat_button .o_stat_value {
+        color: #0f172a;
+        font-weight: 700;
+    }
+
+    .o_tp_stat_total {
+        border-left: 5px solid #1d4ed8;
+    }
+
+    .o_tp_stat_available {
+        border-left: 5px solid #15803d;
+    }
+
+    .o_tp_stat_reserved {
+        border-left: 5px solid #0f766e;
+    }
+
+    .o_tp_stat_in_use {
+        border-left: 5px solid #0369a1;
+    }
+
+    .o_tp_stat_sold {
+        border-left: 5px solid #b45309;
+    }
+
+    .o_tp_stat_inactive {
+        border-left: 5px solid #6b7280;
+    }
+
+    .o_tp_stat_cleanup {
+        border-left: 5px solid #b91c1c;
+    }
+
+    .o_tp_stat_waste {
+        border-left: 5px solid #c2410c;
+    }
+
+    .o_tp_stat_mo {
+        border-left: 5px solid #7c3aed;
+    }
+}

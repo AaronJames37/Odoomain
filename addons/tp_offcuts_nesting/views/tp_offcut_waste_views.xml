@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_tp_offcut_waste_tree" model="ir.ui.view">
+        <field name="name">tp.offcut.waste.list</field>
+        <field name="model">tp.offcut.waste</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="timestamp"/>
+                <field name="mo_id"/>
+                <field name="parent_source_type"/>
+                <field name="product_id"/>
+                <field name="width_mm"/>
+                <field name="height_mm"/>
+                <field name="area_mm2"/>
+                <field name="kerf_mm"/>
+                <field name="waste_value"/>
+                <field name="account_move_id"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_tp_offcut_waste_form" model="ir.ui.view">
+        <field name="name">tp.offcut.waste.form</field>
+        <field name="model">tp.offcut.waste</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="timestamp"/>
+                        <field name="currency_id"/>
+                        <field name="mo_id"/>
+                        <field name="product_id"/>
+                    </group>
+                    <group string="Parent Source">
+                        <field name="parent_source_type"/>
+                        <field name="parent_lot_id"/>
+                        <field name="parent_offcut_id"/>
+                    </group>
+                    <group string="Waste Geometry">
+                        <field name="width_mm"/>
+                        <field name="height_mm"/>
+                        <field name="area_mm2"/>
+                        <field name="kerf_mm"/>
+                    </group>
+                    <group string="Valuation and Accounting">
+                        <field name="waste_value"/>
+                        <field name="valuation_event_id"/>
+                        <field name="account_move_id"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_tp_offcut_waste" model="ir.actions.act_window">
+        <field name="name">Waste Records</field>
+        <field name="res_model">tp.offcut.waste</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>

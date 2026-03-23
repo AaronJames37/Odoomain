@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_tp_nesting_job_tree" model="ir.ui.view">
+        <field name="name">tp.nesting.job.list</field>
+        <field name="model">tp.nesting.job</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="sale_order_id"/>
+                <field name="demand_product_id"/>
+                <field name="last_run_id"/>
+                <field name="note"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_tp_nesting_job_form" model="ir.ui.view">
+        <field name="name">tp.nesting.job.form</field>
+        <field name="model">tp.nesting.job</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_view_sale_order" type="object" string="Open Sales Order" class="btn-secondary"/>
+                    <button name="action_view_mos" type="object" string="Open Manufacturing Orders" class="btn-secondary" invisible="mo_count == 0"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="sale_order_id"/>
+                            <field name="demand_product_id"/>
+                        </group>
+                        <group>
+                            <field name="last_run_id"/>
+                            <field name="mo_count" readonly="1"/>
+                            <field name="note"/>
+                        </group>
+                    </group>
+                    <group string="Manufacturing Orders">
+                        <field name="mo_ids" widget="many2many_tags" readonly="1"/>
+                    </group>
+                    <group string="Runs">
+                        <field name="run_ids" readonly="1">
+                            <list>
+                                <field name="name"/>
+                                <field name="mo_id"/>
+                                <field name="state"/>
+                                <field name="engine_mode"/>
+                                <field name="started_at"/>
+                                <field name="finished_at"/>
+                            </list>
+                        </field>
+                    </group>
+                    <group string="Allocations">
+                        <field name="allocation_ids" readonly="1">
+                            <list>
+                                <field name="run_id"/>
+                                <field name="source_type"/>
+                                <field name="source_offcut_id"/>
+                                <field name="source_sheet_format_id"/>
+                                <field name="source_lot_id"/>
+                                <field name="cut_width_mm"/>
+                                <field name="cut_height_mm"/>
+                                <field name="cut_quantity"/>
+                                <field name="allocated_area_mm2"/>
+                                <field name="status"/>
+                            </list>
+                        </field>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_tp_nesting_job_search" model="ir.ui.view">
+        <field name="name">tp.nesting.job.search</field>
+        <field name="model">tp.nesting.job</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="sale_order_id"/>
+                <field name="demand_product_id"/>
+                <field name="last_run_id"/>
+                <group>
+                    <filter string="By Sales Order" name="grp_so" context="{'group_by': 'sale_order_id'}"/>
+                    <filter string="By Product" name="grp_product" context="{'group_by': 'demand_product_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_tp_nesting_job" model="ir.actions.act_window">
+        <field name="name">Nesting Jobs</field>
+        <field name="res_model">tp.nesting.job</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_tp_nesting_job_search"/>
+    </record>
+</odoo>

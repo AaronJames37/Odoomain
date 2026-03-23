@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_tp_offcut_tree" model="ir.ui.view">
+        <field name="name">tp.offcut.list</field>
+        <field name="model">tp.offcut</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="lot_id"/>
+                <field name="product_id"/>
+                <field name="width_mm"/>
+                <field name="height_mm"/>
+                <field name="area_mm2"/>
+                <field name="currency_id" invisible="1"/>
+                <field name="remaining_value"/>
+                <field name="state"/>
+                <field name="bin_location_id"/>
+                <field name="source_type"/>
+                <field name="reserved_mo_id"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_tp_offcut_form" model="ir.ui.view">
+        <field name="name">tp.offcut.form</field>
+        <field name="model">tp.offcut</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_set_available" type="object" string="Set Available" invisible="state == 'available'" class="btn-secondary"/>
+                    <button name="action_set_in_use" type="object" string="Set In Use" invisible="state == 'in_use'" class="btn-secondary"/>
+                    <button name="action_set_sold" type="object" string="Set Sold" invisible="state == 'sold'" class="btn-secondary"/>
+                    <button name="action_mark_damaged" type="object" string="Mark Damaged" invisible="state == 'inactive'" class="btn-secondary"/>
+                    <button name="action_archive" type="object" string="Archive" invisible="state == 'inactive'" class="btn-secondary"/>
+                    <field name="state" widget="statusbar" statusbar_visible="available,reserved,in_use,sold,inactive"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group string="Core">
+                            <field name="name"/>
+                            <field name="lot_id"/>
+                            <field name="product_id" invisible="not lot_id"/>
+                            <field name="manual_product_id" string="Product" invisible="lot_id" required="not lot_id"/>
+                            <field name="active"/>
+                        </group>
+                    <group string="Dimensions">
+                        <field name="width_mm"/>
+                        <field name="height_mm"/>
+                        <field name="area_mm2" readonly="1"/>
+                        <field name="remaining_area_mm2"/>
+                    </group>
+                    </group>
+                    <group>
+                        <group string="Traceability">
+                            <field name="source_type"/>
+                            <field name="parent_lot_id" invisible="source_type != 'sheet'"/>
+                            <field name="parent_offcut_id" invisible="source_type != 'offcut'"/>
+                            <field name="sold_at" readonly="1"/>
+                            <field name="damaged_at" readonly="1"/>
+                        </group>
+                        <group string="Storage">
+                            <field name="bin_location_id"/>
+                            <field name="reserved_mo_id" readonly="1"/>
+                        </group>
+                    </group>
+                    <group string="Material Identity">
+                        <field name="tp_material_type"/>
+                        <field name="tp_thickness_mm"/>
+                        <field name="tp_colour"/>
+                        <field name="tp_finish"/>
+                        <field name="tp_protective_film"/>
+                        <field name="tp_brand_supplier"/>
+                    </group>
+                    <group string="Valuation">
+                        <field name="currency_id"/>
+                        <field name="remaining_value"/>
+                        <field name="parent_remaining_area_mm2" readonly="1"/>
+                        <field name="parent_remaining_value_snapshot" readonly="1"/>
+                        <field name="valuation_reference" readonly="1"/>
+                    </group>
+                    <group string="SVG Preview">
+                        <field name="tp_preview_svg" widget="html" readonly="1" nolabel="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_tp_offcut_search" model="ir.ui.view">
+        <field name="name">tp.offcut.search</field>
+        <field name="model">tp.offcut</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="product_id"/>
+                <field name="state"/>
+                <field name="source_type"/>
+                <field name="bin_location_id"/>
+                <field name="reserved_mo_id"/>
+                <filter string="Available" name="available" domain="[('state', '=', 'available')]"/>
+                <filter string="Reserved" name="reserved" domain="[('state', '=', 'reserved')]"/>
+                <filter string="In Use" name="in_use" domain="[('state', '=', 'in_use')]"/>
+                <filter string="Sold" name="sold" domain="[('state', '=', 'sold')]"/>
+                <group>
+                    <filter string="By Product" name="group_product" context="{'group_by': 'product_id'}"/>
+                    <filter string="By BIN" name="group_bin" context="{'group_by': 'bin_location_id'}"/>
+                    <filter string="By State" name="group_state" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_tp_offcut" model="ir.actions.act_window">
+        <field name="name">Offcuts</field>
+        <field name="res_model">tp.offcut</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_tp_offcut_search"/>
+    </record>
+</odoo>

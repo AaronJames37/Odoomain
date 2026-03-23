@@ -1,0 +1,12 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_tp_offcuts_placeholder_user,tp.offcuts.placeholder user,model_tp_offcuts_placeholder,base.group_user,1,1,1,1
+access_tp_offcut_user,tp.offcut user,model_tp_offcut,base.group_user,1,0,0,0
+access_tp_offcut_manager,tp.offcut manager,model_tp_offcut,stock.group_stock_manager,1,1,1,1
+access_tp_offcut_bin_rule_user,tp.offcut.bin.rule user,model_tp_offcut_bin_rule,base.group_user,1,0,0,0
+access_tp_offcut_bin_rule_manager,tp.offcut.bin.rule manager,model_tp_offcut_bin_rule,stock.group_stock_manager,1,1,1,1
+access_tp_offcut_valuation_event_user,tp.offcut.valuation.event user,model_tp_offcut_valuation_event,base.group_user,1,0,0,0
+access_tp_offcut_valuation_event_manager,tp.offcut.valuation.event manager,model_tp_offcut_valuation_event,stock.group_stock_manager,1,1,1,1
+access_tp_offcut_waste_user,tp.offcut.waste user,model_tp_offcut_waste,base.group_user,1,0,0,0
+access_tp_offcut_waste_manager,tp.offcut.waste manager,model_tp_offcut_waste,stock.group_stock_manager,1,1,1,1
+access_tp_offcut_operational_dashboard_user,tp.offcut.operational.dashboard user,model_tp_offcut_operational_dashboard,base.group_user,1,1,1,1
+access_tp_offcut_operational_dashboard_manager,tp.offcut.operational.dashboard manager,model_tp_offcut_operational_dashboard,stock.group_stock_manager,1,1,1,1

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_order_line_tree_tp_dimensions" model="ir.ui.view">
+        <field name="name">sale.order.line.list.tp.dimensions</field>
+        <field name="model">sale.order.line</field>
+        <field name="inherit_id" ref="sale.view_order_line_tree"/>
+        <field name="arch" type="xml">
+            <field name="product_uom_qty" position="after">
+                <field name="tp_thickness_map_id"/>
+                <field name="tp_width_mm"/>
+                <field name="tp_height_mm"/>
+                <field name="tp_area_sqm" readonly="1"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="sale_order_line_form_readonly_tp_dimensions" model="ir.ui.view">
+        <field name="name">sale.order.line.form.readonly.tp.dimensions</field>
+        <field name="model">sale.order.line</field>
+        <field name="inherit_id" ref="sale.sale_order_line_view_form_readonly"/>
+        <field name="arch" type="xml">
+            <field name="product_uom_qty" position="after">
+                <field name="tp_thickness_map_id"/>
+                <field name="tp_width_mm"/>
+                <field name="tp_height_mm"/>
+                <field name="tp_area_sqm" readonly="1"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="view_sales_order_line_filter_tp_dimensions" model="ir.ui.view">
+        <field name="name">sale.order.line.search.tp.dimensions</field>
+        <field name="model">sale.order.line</field>
+        <field name="inherit_id" ref="sale.view_sales_order_line_filter"/>
+        <field name="arch" type="xml">
+            <field name="product_id" position="after">
+                <field name="tp_width_mm"/>
+                <field name="tp_height_mm"/>
+            </field>
+        </field>
+    </record>
+</odoo>

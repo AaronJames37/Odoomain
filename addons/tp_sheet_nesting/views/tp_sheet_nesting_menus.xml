@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem
+        id="menu_tp_sheet_nesting_root"
+        name="Sheet Nesting"
+        sequence="20"
+    />
+    <menuitem id="menu_tp_sheet_nesting_runs" name="Nesting Runs" parent="menu_tp_sheet_nesting_root" action="action_tp_nesting_run" sequence="10"/>
+    <menuitem id="menu_tp_sheet_nesting_jobs" name="Nesting Jobs" parent="menu_tp_sheet_nesting_root" action="action_tp_nesting_job" sequence="20"/>
+    <menuitem id="menu_tp_sheet_nesting_allocations" name="Nesting Allocations" parent="menu_tp_sheet_nesting_root" action="action_tp_nesting_allocation" sequence="30"/>
+    <menuitem id="menu_tp_sheet_nesting_config" name="Configuration" parent="menu_tp_sheet_nesting_root" sequence="90"/>
+    <menuitem id="menu_tp_sheet_nesting_source_map" name="Nesting Source Mapping" parent="menu_tp_sheet_nesting_config" action="action_tp_nesting_source_map" sequence="10"/>
+    <menuitem id="menu_tp_sheet_nesting_benchmarks" name="Optimizer Benchmarks" parent="menu_tp_sheet_nesting_config" action="action_tp_nesting_benchmark" sequence="20"/>
+    <menuitem
+        id="menu_tp_sheet_nesting_settings"
+        name="Settings"
+        parent="menu_tp_sheet_nesting_root"
+        action="action_tp_sheet_nesting_settings"
+        sequence="95"
+        groups="base.group_system"
+    />
+</odoo>

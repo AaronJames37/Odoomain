@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="tp_offcut_operational_dashboard_main" model="tp.offcut.operational.dashboard">
+        <field name="company_id" ref="base.main_company"/>
+    </record>
+</odoo>

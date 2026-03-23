@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_order_form_tp_dimensions" model="ir.ui.view">
+        <field name="name">sale.order.form.tp.dimensions</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='order_line']/form//field[@name='product_uom_qty']" position="after">
+                <field name="tp_width_mm"/>
+                <field name="tp_height_mm"/>
+            </xpath>
+            <xpath expr="//field[@name='order_line']/list//field[@name='product_uom_qty']" position="after">
+                <field name="tp_width_mm" optional="show"/>
+                <field name="tp_height_mm" optional="show"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_tp_storefront_settings_form" model="ir.ui.view">
+        <field name="name">tp.storefront.settings.form</field>
+        <field name="model">tp.storefront.settings</field>
+        <field name="arch" type="xml">
+            <form string="Storefront Settings">
+                <header>
+                    <button
+                        name="action_sync_storefront_catalog"
+                        type="object"
+                        string="Sync Storefront DB"
+                        class="oe_highlight"
+                    />
+                </header>
+                <sheet>
+                    <group>
+                        <group string="General">
+                            <field name="company_id"/>
+                            <field name="site_name"/>
+                            <field name="site_tagline"/>
+                            <field name="support_email"/>
+                            <field name="support_phone"/>
+                        </group>
+                        <group string="Brand Assets">
+                            <field name="logo_url"/>
+                            <field name="favicon_url"/>
+                            <field name="body_font_family"/>
+                            <field name="content_max_width_px"/>
+                            <field name="sync_endpoint_url"/>
+                            <field name="sync_token" password="True"/>
+                            <field name="last_catalog_sync_at" readonly="1"/>
+                            <field name="last_catalog_sync_status" readonly="1"/>
+                        </group>
+                    </group>
+
+                    <group string="Theme">
+                        <group>
+                            <field name="primary_color"/>
+                            <field name="secondary_color"/>
+                            <field name="accent_color"/>
+                        </group>
+                        <group>
+                            <field name="background_color"/>
+                            <field name="text_color"/>
+                        </group>
+                    </group>
+
+                    <group string="Header Bars">
+                        <group string="Promo Bar">
+                            <field name="promo_bar_enabled"/>
+                            <field name="promo_bar_text" invisible="not promo_bar_enabled"/>
+                        </group>
+                        <group string="USP Bar">
+                            <field name="usp_bar_enabled"/>
+                            <field name="usp_1_heading" invisible="not usp_bar_enabled"/>
+                            <field name="usp_1_subheading" invisible="not usp_bar_enabled"/>
+                            <field name="usp_2_heading" invisible="not usp_bar_enabled"/>
+                            <field name="usp_2_subheading" invisible="not usp_bar_enabled"/>
+                            <field name="usp_3_heading" invisible="not usp_bar_enabled"/>
+                            <field name="usp_3_subheading" invisible="not usp_bar_enabled"/>
+                            <field name="usp_4_heading" invisible="not usp_bar_enabled"/>
+                            <field name="usp_4_subheading" invisible="not usp_bar_enabled"/>
+                        </group>
+                    </group>
+
+                    <group string="Panel Quantity Discounts">
+                        <group>
+                            <field name="panel_qty_discount_enabled"/>
+                        </group>
+                        <group invisible="not panel_qty_discount_enabled">
+                            <field name="panel_qty_discount_1_min_qty"/>
+                            <field name="panel_qty_discount_1_percent"/>
+                            <field name="panel_qty_discount_2_min_qty"/>
+                            <field name="panel_qty_discount_2_percent"/>
+                            <field name="panel_qty_discount_3_min_qty"/>
+                            <field name="panel_qty_discount_3_percent"/>
+                            <field name="panel_qty_discount_4_min_qty"/>
+                            <field name="panel_qty_discount_4_percent"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_tp_storefront_settings" model="ir.actions.server">
+        <field name="name">Storefront Settings</field>
+        <field name="model_id" ref="model_tp_storefront_settings"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_open_current_company_settings()</field>
+    </record>
+
+    <menuitem
+        id="menu_tp_storefront_root"
+        name="Storefront"
+        sequence="15"
+        groups="base.group_system"
+    />
+
+    <menuitem
+        id="menu_tp_storefront_settings"
+        name="Settings"
+        parent="menu_tp_storefront_root"
+        action="action_tp_storefront_settings"
+        sequence="10"
+        groups="base.group_system"
+    />
+
+    <menuitem
+        id="menu_tp_storefront_products"
+        name="Products"
+        parent="menu_tp_storefront_root"
+        action="action_tp_storefront_products"
+        sequence="20"
+        groups="base.group_system"
+    />
+</odoo>
