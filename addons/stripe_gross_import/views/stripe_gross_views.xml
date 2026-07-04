@@ -1,0 +1,152 @@
+<odoo>
+    <record id="view_stripe_gross_connection_list" model="ir.ui.view">
+        <field name="name">stripe.gross.connection.list</field>
+        <field name="model">stripe.gross.connection</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="company_id"/>
+                <field name="journal_id"/>
+                <field name="auto_import"/>
+                <field name="status_filter"/>
+                <field name="last_successful_import_at"/>
+                <field name="transaction_count"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_stripe_gross_connection_form" model="ir.ui.view">
+        <field name="name">stripe.gross.connection.form</field>
+        <field name="model">stripe.gross.connection</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_fetch_new_transactions" type="object" string="Fetch New Transactions" class="btn-primary"/>
+                    <button name="action_backfill_older_transactions" type="object" string="Backfill Older Transactions"/>
+                    <button name="action_backfill_fees" type="object" string="Backfill Fees"/>
+                    <button name="action_reset_historical_backfill_cursor" type="object" string="Reset Backfill Cursor"/>
+                    <button name="action_test_connection" type="object" string="Test Connection"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_transactions" type="object" class="oe_stat_button" icon="fa-list">
+                            <field name="transaction_count" widget="statinfo" string="Transactions"/>
+                        </button>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="active"/>
+                            <field name="auto_import"/>
+                            <field name="company_id"/>
+                            <field name="journal_id"/>
+                            <field name="fee_journal_id"/>
+                        </group>
+                        <group>
+                            <field name="secret_key" password="True"/>
+                            <field name="connected_account_id"/>
+                            <field name="import_start_date"/>
+                            <field name="status_filter"/>
+                        </group>
+                    </group>
+                    <group string="Sync Cursor">
+                        <field name="lookback_hours"/>
+                        <field name="limit_per_run"/>
+                        <field name="last_stripe_created_timestamp"/>
+                        <field name="historical_backfill_cursor_timestamp"/>
+                        <field name="last_successful_import_at"/>
+                    </group>
+                    <group string="Last Import Details">
+                        <field name="last_import_summary" nolabel="1" readonly="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_stripe_gross_connection" model="ir.actions.act_window">
+        <field name="name">Stripe Gross Connections</field>
+        <field name="res_model">stripe.gross.connection</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_stripe_gross_transaction_list" model="ir.ui.view">
+        <field name="name">stripe.gross.transaction.list</field>
+        <field name="model">stripe.gross.transaction</field>
+        <field name="arch" type="xml">
+            <list create="false" edit="false" delete="false">
+                <field name="date"/>
+                <field name="stripe_balance_transaction_id"/>
+                <field name="stripe_source_id"/>
+                <field name="amount"/>
+                <field name="fee_amount"/>
+                <field name="net_amount"/>
+                <field name="currency_id"/>
+                <field name="stripe_status"/>
+                <field name="state"/>
+                <field name="statement_line_id"/>
+                <field name="fee_statement_line_id"/>
+                <field name="error_message"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_stripe_gross_transaction_form" model="ir.ui.view">
+        <field name="name">stripe.gross.transaction.form</field>
+        <field name="model">stripe.gross.transaction</field>
+        <field name="arch" type="xml">
+            <form create="false" edit="false" delete="false">
+                <header>
+                    <button name="action_open_statement_line" type="object" string="Open Statement Line" class="btn-primary"/>
+                    <button name="action_open_fee_statement_line" type="object" string="Open Fee Statement Line" invisible="not fee_statement_line_id"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="connection_id"/>
+                            <field name="company_id"/>
+                            <field name="journal_id"/>
+                            <field name="statement_line_id"/>
+                            <field name="fee_statement_line_id"/>
+                            <field name="state"/>
+                        </group>
+                        <group>
+                            <field name="date"/>
+                            <field name="stripe_created_at"/>
+                            <field name="stripe_status"/>
+                            <field name="currency_id"/>
+                        </group>
+                    </group>
+                    <group string="Stripe">
+                        <field name="stripe_balance_transaction_id"/>
+                        <field name="stripe_source_id"/>
+                        <field name="stripe_type"/>
+                        <field name="reporting_category"/>
+                        <field name="description"/>
+                    </group>
+                    <group string="Amounts">
+                        <field name="amount"/>
+                        <field name="fee_amount"/>
+                        <field name="net_amount"/>
+                    </group>
+                    <group string="Error">
+                        <field name="error_message"/>
+                    </group>
+                    <group string="Raw Stripe Payload">
+                        <field name="raw_json" nolabel="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_stripe_gross_transaction" model="ir.actions.act_window">
+        <field name="name">Stripe Gross Transactions</field>
+        <field name="res_model">stripe.gross.transaction</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="menu_stripe_gross_root" name="Stripe Gross Import" parent="base.menu_config" sequence="80" groups="base.group_system,account.group_account_manager"/>
+    <menuitem id="menu_stripe_gross_connections" name="Connections" parent="menu_stripe_gross_root" action="action_stripe_gross_connection" sequence="10"/>
+    <menuitem id="menu_stripe_gross_transactions" name="Transactions" parent="menu_stripe_gross_root" action="action_stripe_gross_transaction" sequence="20"/>
+</odoo>

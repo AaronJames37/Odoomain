@@ -81,11 +81,20 @@
     def _apply_placement(self, bin_state, placement, cut):
         self.kernel.apply_placement(bin_state, placement, cut)
 
-    @staticmethod
-    def _initial_bin(source):
+    def _initial_bin(self, source):
+        trim = int(getattr(self, "trim_edge_mm", 0) or 0)
+        width = int(source["width_mm"])
+        height = int(source["height_mm"])
         return {
             "source": source,
-            "free_rects": [{"x": 0, "y": 0, "w": int(source["width_mm"]), "h": int(source["height_mm"])}],
+            "free_rects": [
+                {
+                    "x": trim,
+                    "y": trim,
+                    "w": max(0, width - (trim * 2)),
+                    "h": max(0, height - (trim * 2)),
+                }
+            ],
             "placements": [],
         }
 
@@ -107,15 +116,22 @@
         return [self._clone_bin(bin_state) for bin_state in bins]
 
     @staticmethod
-    def _can_fit_source_dims(source_width, source_height, cut_width, cut_height, kerf):
+    def _can_fit_source_dims(source_width, source_height, cut_width, cut_height, kerf, trim_edge_mm=0):
         source_width = int(source_width or 0)
         source_height = int(source_height or 0)
         cut_width = int(cut_width or 0)
         cut_height = int(cut_height or 0)
-        k = int(kerf or 0)
+        trim = max(0, int(trim_edge_mm or 0))
+        usable_width = max(0, source_width - (trim * 2))
+        usable_height = max(0, source_height - (trim * 2))
+        # A single piece needs no saw cut against the sheet's outer edge, so it
+        # fits an axis when piece <= usable (NOT piece + kerf <= usable). Kerf
+        # is only consumed BETWEEN adjacent pieces, handled by the packer's
+        # per-placement kerf reservation. Charging kerf here wrongly rejected
+        # full-dimension / near-edge pieces with cut_exceeds_all_sources.
         return (
-            (source_width >= cut_width + k and source_height >= cut_height + k)
-            or (source_width >= cut_height + k and source_height >= cut_width + k)
+            (usable_width >= cut_width and usable_height >= cut_height)
+            or (usable_width >= cut_height and usable_height >= cut_width)
         )
 
     def _early_infeasible_cut(self, *, cuts, sheet_lot_sources, sheet_format_sources):
@@ -143,6 +159,7 @@
                     cut.get("width_mm", 0),
                     cut.get("height_mm", 0),
                     self.kerf_mm,
+                    self.trim_edge_mm,
                 )
                 for source in all_sources
             )

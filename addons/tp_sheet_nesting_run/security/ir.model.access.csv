@@ -1,0 +1,7 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_tp_nesting_run_wizard_user,tp.nesting.run.wizard.user,model_tp_nesting_run_wizard,base.group_user,1,1,1,1
+access_tp_nesting_run_wizard_line_user,tp.nesting.run.wizard.line.user,model_tp_nesting_run_wizard_line,base.group_user,1,1,1,1
+access_tp_nesting_run_wizard_manual_line_user,tp.nesting.run.wizard.manual.line.user,model_tp_nesting_run_wizard_manual_line,base.group_user,1,1,1,1
+access_tp_nesting_preview_session_user,tp.nesting.preview.session.user,model_tp_nesting_preview_session,base.group_user,1,1,1,1
+access_tp_nesting_preview_batch_user,tp.nesting.preview.batch.user,model_tp_nesting_preview_batch,base.group_user,1,1,1,1
+access_tp_nesting_preview_result_user,tp.nesting.preview.result.user,model_tp_nesting_preview_result,base.group_user,1,1,1,1

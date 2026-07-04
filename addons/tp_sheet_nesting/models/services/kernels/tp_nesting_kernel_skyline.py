@@ -17,7 +17,7 @@ class TpNestingKernelSkyline(TpNestingKernelBase):
                     fit_h=fit_h,
                     rotated=rotated,
                 )
-                if rect["w"] < placement["used_w"] or rect["h"] < placement["used_h"]:
+                if rect["w"] < placement["fit_w"] or rect["h"] < placement["fit_h"]:
                     continue
                 rem_w = rect["w"] - placement["used_w"]
                 rem_h = rect["h"] - placement["used_h"]

@@ -1,0 +1,14 @@
+<odoo noupdate="1">
+    <record id="param_website_fulfillment_base_url" model="ir.config_parameter">
+        <field name="key">website_fulfillment_sync.base_url</field>
+        <field name="value">https://cutmyplastic.com.au</field>
+    </record>
+    <record id="param_website_fulfillment_statuses" model="ir.config_parameter">
+        <field name="key">website_fulfillment_sync.statuses</field>
+        <field name="value">processing</field>
+    </record>
+    <record id="param_website_fulfillment_limit" model="ir.config_parameter">
+        <field name="key">website_fulfillment_sync.limit</field>
+        <field name="value">1000</field>
+    </record>
+</odoo>

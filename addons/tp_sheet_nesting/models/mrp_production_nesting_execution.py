@@ -1,11 +1,13 @@
-﻿import json
+import json
+import logging
 from html import escape
 
 from odoo import fields, models
 from odoo.exceptions import ValidationError
 
-from .services.tp_2d_nesting_engine import Tp2DNestingEngine
 from .services.tp_nesting_source_pool import TpNestingSourcePool
+
+_logger = logging.getLogger(__name__)
 
 
 class MrpProductionNestingExecution(models.Model):
@@ -207,7 +209,7 @@ class MrpProductionNestingExecution(models.Model):
             parent_lot=parent_lot,
             parent_remaining_area_mm2=parent_area,
             parent_remaining_value=parent_value,
-            kerf_mm=3,
+            kerf_mm=int(run.kerf_mm or 3),
         )
 
     def _tp_process_sheet_remainder(self, run, sheet, rem_w, rem_h):
@@ -613,6 +615,7 @@ class MrpProductionNestingExecution(models.Model):
                     "width_mm": alloc.cut_width_mm,
                     "height_mm": alloc.cut_height_mm,
                     "quantity": int(alloc.cut_quantity or 1),
+                    "web_cut_part_id": alloc.web_cut_part_id.id,
                 }
             )
 
@@ -686,28 +689,60 @@ class MrpProductionNestingExecution(models.Model):
                 grouped.append(groups[key])
             groups[key]["allocs"].append(alloc)
 
-        cols = 3
-        tile_w = 300
-        tile_h = 220
-        pad = 16
-        rows = (len(grouped) + cols - 1) // cols
-        svg_w = (cols * tile_w) + ((cols + 1) * pad)
-        svg_h = (rows * tile_h) + ((rows + 1) * pad)
-        parts = [
-            f'<svg xmlns="http://www.w3.org/2000/svg" width="{svg_w}" height="{svg_h}" viewBox="0 0 {svg_w} {svg_h}">',
-            '<rect x="0" y="0" width="100%" height="100%" fill="#f8fafc"/>',
+        tile_w = 720
+        tile_h = 540
+        pad = 32
+        svg_w = tile_w + 2 * pad
+        svg_h = tile_h + 2 * pad
+        # Light palette. Drawn as a flat fill at reduced opacity so panels read
+        # light/translucent over the white sheet (the PDF engine, wkhtmltopdf,
+        # does not render SVG gradients reliably — a solid gradient just shows
+        # as opaque). Panels of the same size share a colour, keyed by dims below.
+        palette = [
+            "#93c5fd",  # blue
+            "#86efac",  # green
+            "#fde047",  # amber
+            "#fca5a5",  # red
+            "#7dd3fc",  # sky
+            "#c4b5fd",  # violet
+            "#fdba74",  # orange
+            "#67e8f9",  # cyan
+            "#f9a8d4",  # pink
         ]
+        # Stable size -> colour assignment so identical panels match across the run.
+        size_color_map = {}
 
-        palette = ["#2563eb", "#16a34a", "#f59e0b", "#dc2626", "#0ea5e9", "#7c3aed", "#ea580c"]
-        for idx, group in enumerate(grouped):
-            col = idx % cols
-            row = idx // cols
-            x0 = pad + col * (tile_w + pad)
-            y0 = pad + row * (tile_h + pad)
+        def _color_for_size(w_mm, h_mm):
+            key = (int(w_mm), int(h_mm))
+            if key not in size_color_map:
+                size_color_map[key] = palette[len(size_color_map) % len(palette)]
+            return size_color_map[key]
+
+        sheet_blocks = []
+        for group in grouped:
+            x0 = pad
+            y0 = pad
             src_w = group["src_w"]
             src_h = group["src_h"]
             source_label = group["label"]
-            cut_count = sum(max(int(a.cut_quantity or 1), 1) for a in group["allocs"])
+            panel_count = sum(max(int(a.cut_quantity or 1), 1) for a in group["allocs"])
+            rects = []
+            for alloc in group["allocs"]:
+                for _i in range(max(int(alloc.cut_quantity or 1), 1)):
+                    rects.append((
+                        max(0, int(alloc.placed_x_mm or 0)),
+                        max(0, int(alloc.placed_y_mm or 0)),
+                        max(1, int(alloc.cut_width_mm or 1)),
+                        max(1, int(alloc.cut_height_mm or 1)),
+                    ))
+            try:
+                from odoo.addons.tp_sheet_nesting.models.services.tp_guillotine_cuts import (
+                    panel_saw_cut_metrics,
+                )
+                saw_metrics = panel_saw_cut_metrics(rects, src_w, src_h)
+                saw_cut_count = int(saw_metrics.get("saw_operations") or 0)
+            except Exception:  # noqa: BLE001 - header metric should never block rendering
+                saw_cut_count = 0
 
             inner_w = tile_w - 24
             inner_h = tile_h - 64
@@ -717,22 +752,28 @@ class MrpProductionNestingExecution(models.Model):
             rect_x = x0 + 12 + int((inner_w - src_px_w) / 2)
             rect_y = y0 + 42 + int((inner_h - src_px_h) / 2)
 
-            parts.extend(
-                [
-                    f'<rect x="{x0}" y="{y0}" width="{tile_w}" height="{tile_h}" rx="10" fill="#ffffff" stroke="#dbe1ea"/>',
-                    f'<text x="{x0 + 10}" y="{y0 + 22}" font-size="12" font-family="Arial, sans-serif" fill="#1f2937">'
-                    f'{escape((group["source_type"] or "").upper())} - {escape(source_label)} ({cut_count} cut(s))</text>',
-                    f'<text x="{x0 + 10}" y="{y0 + 36}" font-size="10" font-family="Arial, sans-serif" fill="#475569">'
-                    f'Bin: {escape(group["key"])}</text>',
-                    f'<rect x="{rect_x}" y="{rect_y}" width="{src_px_w}" height="{src_px_h}" fill="#e5e7eb" stroke="#94a3b8"/>',
-                    f'<text x="{x0 + 10}" y="{y0 + tile_h - 14}" font-size="11" font-family="Arial, sans-serif" fill="#334155">'
-                    f'Source {src_w}x{src_h} mm</text>',
-                ]
-            )
+            parts = [
+                f'<svg xmlns="http://www.w3.org/2000/svg" width="{svg_w}" height="{svg_h}" viewBox="0 0 {svg_w} {svg_h}">',
+                '<rect x="0" y="0" width="100%" height="100%" fill="#f8fafc"/>',
+                f'<rect x="{x0}" y="{y0}" width="{tile_w}" height="{tile_h}" rx="10" fill="#ffffff" stroke="#dbe1ea"/>',
+                f'<text x="{x0 + 10}" y="{y0 + 22}" font-size="12" font-family="Arial, sans-serif" fill="#1f2937">'
+                f'{escape((group["source_type"] or "").upper())} - {escape(source_label)} '
+                f'({panel_count} panel(s), {saw_cut_count} saw cut(s))</text>',
+                f'<text x="{x0 + 10}" y="{y0 + 36}" font-size="10" font-family="Arial, sans-serif" fill="#475569">'
+                f'Bin: {escape(group["key"])}</text>',
+                f'<rect x="{rect_x}" y="{rect_y}" width="{src_px_w}" height="{src_px_h}" fill="#e5e7eb" stroke="#94a3b8"/>',
+                f'<text x="{x0 + 10}" y="{y0 + tile_h - 14}" font-size="11" font-family="Arial, sans-serif" fill="#334155">'
+                f'Source {src_w}x{src_h} mm</text>',
+            ]
 
-            color_idx = 0
             for alloc in group["allocs"]:
                 qty = max(int(alloc.cut_quantity or 1), 1)
+                so_name = (
+                    (alloc.source_so_line_id.order_id.name if alloc.source_so_line_id else None)
+                    or (alloc.web_cut_part_id.sale_order_id.name if alloc.web_cut_part_id else None)
+                    or (alloc.web_cut_part_id.odoo_order_name if alloc.web_cut_part_id else None)
+                    or ""
+                )
                 for _i in range(qty):
                     x_mm = max(0, int(alloc.placed_x_mm or 0))
                     y_mm = max(0, int(alloc.placed_y_mm or 0))
@@ -746,17 +787,62 @@ class MrpProductionNestingExecution(models.Model):
                     cut_px_h = max(int(h_mm * scale), 1)
                     cut_px_x = rect_x + int(x_mm * scale)
                     cut_px_y = rect_y + int(y_mm * scale)
-                    cut_color = palette[color_idx % len(palette)]
-                    color_idx += 1
+                    # Same-size panels share a colour; flat fill at reduced opacity
+                    # so it reads light/translucent over the white sheet.
+                    cut_color = _color_for_size(w_mm, h_mm)
                     parts.append(
                         f'<rect x="{cut_px_x}" y="{cut_px_y}" width="{cut_px_w}" height="{cut_px_h}" '
-                        f'fill="{cut_color}" fill-opacity="0.72" stroke="#0f172a" '
+                        f'fill="{cut_color}" fill-opacity="0.45" stroke="#94a3b8" stroke-width="0.75" '
                         f'data-alloc-id="{alloc.id}" data-source-bin="{escape(group["key"])}" '
+                        f'data-so-name="{escape(so_name)}" '
                         f'data-x-mm="{x_mm}" data-y-mm="{y_mm}" data-w-mm="{w_mm}" data-h-mm="{h_mm}"/>'
                     )
+                    cx = cut_px_x + cut_px_w / 2
+                    cy = cut_px_y + cut_px_h / 2
+                    if so_name:
+                        label_font = max(8, min(14, int(min(cut_px_w, cut_px_h) / 4)))
+                        parts.append(
+                            f'<text x="{cx:.1f}" y="{cy + label_font / 3:.1f}" font-size="{label_font}" '
+                            f'font-family="Arial, sans-serif" font-weight="bold" '
+                            f'text-anchor="middle" fill="#1f2937">{escape(so_name)}</text>'
+                        )
+                    # Dimension labels: width value along the bottom edge, length
+                    # value rotated down the left edge (preview summary layout).
+                    dim_font = max(8, min(12, int(min(cut_px_w, cut_px_h) / 6)))
+                    parts.append(
+                        f'<text x="{cx:.1f}" y="{cut_px_y + cut_px_h - 4:.1f}" font-size="{dim_font}" '
+                        f'font-family="Arial, sans-serif" font-weight="bold" text-anchor="middle" '
+                        f'fill="#1f2937">{w_mm}</text>'
+                    )
+                    ly = cut_px_x + dim_font + 1
+                    parts.append(
+                        f'<text x="{ly:.1f}" y="{cy:.1f}" font-size="{dim_font}" '
+                        f'font-family="Arial, sans-serif" font-weight="bold" text-anchor="middle" '
+                        f'fill="#1f2937" transform="rotate(-90 {ly:.1f} {cy:.1f})">{h_mm}</text>'
+                    )
 
-        parts.append("</svg>")
-        return "".join(parts)
+            # Subtle guillotine cut lines (rips + crosscuts) for this sheet.
+            try:
+                from odoo.addons.tp_sheet_nesting.models.services.tp_guillotine_cuts import (
+                    panel_saw_cut_lines,
+                )
+                for (x1, y1, x2, y2) in panel_saw_cut_lines(rects, src_w, src_h):
+                    parts.append(
+                        f'<line x1="{rect_x + x1 * scale:.1f}" y1="{rect_y + y1 * scale:.1f}" '
+                        f'x2="{rect_x + x2 * scale:.1f}" y2="{rect_y + y2 * scale:.1f}" '
+                        f'stroke="#6b7280" stroke-width="0.5" stroke-dasharray="3 2" stroke-opacity="0.5"/>'
+                    )
+            except Exception:  # noqa: BLE001 — cut overlay is decorative
+                pass
+
+            parts.append("</svg>")
+            sheet_blocks.append(
+                '<div style="page-break-inside: avoid; break-inside: avoid; margin-bottom: 12px;">'
+                + "".join(parts)
+                + "</div>"
+            )
+
+        return "".join(sheet_blocks)
 
     @staticmethod
     def _tp_candidate_sources(offcuts, sheets, sheet_lots):
@@ -803,7 +889,7 @@ class MrpProductionNestingExecution(models.Model):
                 rem_h,
                 future_cut["width_mm"],
                 future_cut["height_mm"],
-                3,
+                self.env.company.tp_nesting_kerf_mm or 3,
             )
             if not fits:
                 continue
@@ -821,7 +907,11 @@ class MrpProductionNestingExecution(models.Model):
             if source["type"] not in ("sheet", "sheet_lot"):
                 continue
             fits, rotated, fit_w, fit_h, rem_w, rem_h = self._tp_fit_source(
-                source["width_mm"], source["height_mm"], cut["width_mm"], cut["height_mm"], 3
+                source["width_mm"],
+                source["height_mm"],
+                cut["width_mm"],
+                cut["height_mm"],
+                self.env.company.tp_nesting_kerf_mm or 3,
             )
             if not fits:
                 continue
@@ -858,6 +948,8 @@ class MrpProductionNestingExecution(models.Model):
                         "width_mm": cut["width_mm"],
                         "height_mm": cut["height_mm"],
                         "source_mo_id": scoped_mo.id,
+                        "source_so_line_id": cut.get("source_so_line_id"),
+                        "source_web_cut_part_id": cut.get("source_web_cut_part_id"),
                     }
                 )
         cuts.sort(key=lambda x: x["width_mm"] * x["height_mm"], reverse=True)
@@ -877,6 +969,8 @@ class MrpProductionNestingExecution(models.Model):
                 "source_type": "offcut",
                 "source_offcut_id": offcut.id,
                 "source_lot_id": offcut.lot_id.id,
+                "source_so_line_id": cut.get("source_so_line_id"),
+                "web_cut_part_id": cut.get("source_web_cut_part_id"),
                 "source_bin_key": bin_key,
                 "source_bin_label": bin_label,
                 "cut_width_mm": fit_w,
@@ -903,7 +997,7 @@ class MrpProductionNestingExecution(models.Model):
                 parent_offcut=offcut,
                 parent_remaining_area_mm2=float(offcut.remaining_area_mm2 or offcut.area_mm2 or 0.0),
                 parent_remaining_value=float(offcut.remaining_value or 0.0),
-                kerf_mm=3,
+                kerf_mm=int(run.kerf_mm or 3),
             )
 
     def _tp_allocate_from_sheet(self, *, run, cut, candidate, source_mo):
@@ -927,6 +1021,8 @@ class MrpProductionNestingExecution(models.Model):
                 "source_type": "sheet",
                 "source_sheet_format_id": sheet.id,
                 "source_lot_id": parent_lot.id,
+                "source_so_line_id": cut.get("source_so_line_id"),
+                "web_cut_part_id": cut.get("source_web_cut_part_id"),
                 "source_bin_key": bin_key,
                 "source_bin_label": bin_label,
                 "cut_width_mm": fit_w,
@@ -959,6 +1055,8 @@ class MrpProductionNestingExecution(models.Model):
             "run_id": run.id,
             "source_type": "sheet",
             "source_lot_id": slot["source_lot_id"],
+            "source_so_line_id": cut.get("source_so_line_id"),
+            "web_cut_part_id": cut.get("source_web_cut_part_id"),
             "source_bin_key": source_bin_key or slot.get("source_bin_key"),
             "source_bin_label": source_bin_label or slot.get("source_bin_label"),
             "cut_width_mm": fit_w,
@@ -1005,6 +1103,8 @@ class MrpProductionNestingExecution(models.Model):
                 "run_id": run.id,
                 "source_type": "sheet",
                 "source_lot_id": lot.id,
+                "source_so_line_id": cut.get("source_so_line_id"),
+                "web_cut_part_id": cut.get("source_web_cut_part_id"),
                 "source_bin_key": bin_key,
                 "source_bin_label": bin_label,
                 "cut_width_mm": fit_w,
@@ -1064,7 +1164,11 @@ class MrpProductionNestingExecution(models.Model):
         for source in offcut_sources:
             offcut = source["record"]
             fits, rotated, fit_w, fit_h, rem_w, rem_h = self._tp_fit_source(
-                offcut.width_mm, offcut.height_mm, cut["width_mm"], cut["height_mm"], 3
+                offcut.width_mm,
+                offcut.height_mm,
+                cut["width_mm"],
+                cut["height_mm"],
+                self.env.company.tp_nesting_kerf_mm or 3,
             )
             if not fits:
                 continue
@@ -1200,6 +1304,8 @@ class MrpProductionNestingExecution(models.Model):
 
     def _tp_execute_with_engine(self, *, mo, run, scope_mos, mode):
         company = mo.company_id
+        kerf_mm = max(0, int(run.kerf_mm or company.tp_nesting_kerf_mm or 3))
+        trim_edge_mm = 0
         base_mo = scope_mos[0]
         product = base_mo.x_tp_source_so_line_id.product_id or base_mo.product_id
         material_identity = base_mo._tp_get_material_identity()
@@ -1226,6 +1332,8 @@ class MrpProductionNestingExecution(models.Model):
             "score_breakdown": {},
             "policy_preset": company.tp_nesting_policy_preset or "yield_first",
             "policy_weights": {},
+            "kerf_mm": kerf_mm,
+                    "trim_edge_mm": trim_edge_mm,
             "max_pieces": company.tp_nesting_max_piece_count or 200,
             "beam_width_cap": company.tp_nesting_beam_width_cap or 24,
             "timeout_cap_ms": company.tp_nesting_timeout_cap_ms or 15000,
@@ -1258,37 +1366,19 @@ class MrpProductionNestingExecution(models.Model):
                     "effective_branch_cap": effective_branch_cap,
                 }
             )
-            engine = Tp2DNestingEngine(
-                kerf_mm=3,
-                timeout_ms=effective_timeout,
-                sheet_size_candidate_limit=company.tp_nesting_sheet_size_candidate_limit or 25,
-                beam_width=effective_beam_width,
-                branch_cap=effective_branch_cap,
-                enable_exact_refinement=bool(company.tp_nesting_exact_refinement_enabled),
-                exact_refinement_cut_threshold=company.tp_nesting_exact_refinement_cut_threshold or 8,
-                exact_refinement_timeout_ms=min(
-                    int(company.tp_nesting_exact_refinement_timeout_ms or 250),
-                    timeout_cap_ms,
+            Job = self.env["tp.nesting.job"].sudo()
+            try:
+                plan = Job._tp_run_v2_pattern_constructor(
+                    remaining_cuts,
+                    sheet_format_sources,
+                    kerf_mm=kerf_mm,
+                    trim_edge_mm=trim_edge_mm,
+                    offcut_sources=sheet_lot_sources,
+                    time_budget_s=company.tp_nesting_guillotine_seconds or 10,
                 )
-                if timeout_cap_ms > 0
-                else int(company.tp_nesting_exact_refinement_timeout_ms or 250),
-                mode=mode,
-                kernel_name=company.tp_nesting_kernel_name or "maxrects",
-                scoring_preset=company.tp_nesting_policy_preset or "yield_first",
-                waste_priority=company.tp_nesting_waste_priority or 1.0,
-                offcut_reuse_priority=company.tp_nesting_offcut_reuse_priority or 1.0,
-                sheet_count_penalty=company.tp_nesting_sheet_count_penalty or 1.0,
-                cost_sensitivity=company.tp_nesting_cost_sensitivity or 1.0,
-                debug_enabled=bool(company.tp_nesting_debug_enabled),
-                max_pieces=max_pieces,
-                beam_width_cap=beam_width_cap,
-                timeout_cap_ms=timeout_cap_ms,
-            )
-            plan = engine.plan(
-                cuts=remaining_cuts,
-                sheet_lot_sources=sheet_lot_sources,
-                sheet_format_sources=sheet_format_sources,
-            )
+            except Exception as exc:  # noqa: BLE001 - surface as a plan-shaped failure
+                _logger.exception("Production v2 pattern constructor failed")
+                plan = {"ok": False, "metrics": {"infeasible_reason": str(exc)}}
             if not plan.get("ok"):
                 reason = (plan.get("metrics") or {}).get("infeasible_reason") or ""
                 cut = plan.get("error_cut", {}) or {}
@@ -1336,7 +1426,8 @@ class MrpProductionNestingExecution(models.Model):
                 {
                     "name": f"NEST-{mo.name}",
                     "mo_id": mo.id,
-                    "kerf_mm": 3,
+                    "kerf_mm": max(0, int(mo.company_id.tp_nesting_kerf_mm or 3)),
+                    "trim_edge_mm": 0,
                     "rotation_mode": "free",
                     "engine_mode": mo.company_id.tp_nesting_engine_mode or "optimal",
                     "note": f"Scope MOs: {len(scope_mos)}",
@@ -1346,28 +1437,16 @@ class MrpProductionNestingExecution(models.Model):
             mo._tp_release_scope_reservations(scope_mos)
             try:
                 with self.env.cr.savepoint():
-                    company = mo.company_id
-                    engine_mode = company.tp_nesting_engine_mode or "optimal"
-                    try:
-                        if engine_mode == "optimal":
-                            self._tp_execute_optimal(mo=mo, run=run, scope_mos=scope_mos)
-                        else:
-                            self._tp_execute_deterministic(mo=mo, run=run, scope_mos=scope_mos)
-                    except TimeoutError:
-                        if company.tp_nesting_fallback_enabled:
-                            run.write({"engine_mode": "deterministic"})
-                            self._tp_execute_deterministic(mo=mo, run=run, scope_mos=scope_mos)
-                        else:
-                            raise
+                    self._tp_execute_optimal(mo=mo, run=run, scope_mos=scope_mos)
 
                 mo._tp_capture_run_outputs(run)
                 run.write(
                     {
                         "state": "done",
                         "finished_at": fields.Datetime.now(),
-                        "nesting_svg": mo._tp_build_nesting_svg(run),
                     }
                 )
+                run.invalidate_recordset(["nesting_svg"])
                 scope_mos.write({"tp_last_nesting_run_id": run.id, "tp_nesting_state": "done"})
                 # Keep MO raw consumption aligned with the selected sheet sources
                 # immediately after a successful nesting run.

@@ -5,18 +5,20 @@
         <field name="model">tp.offcut</field>
         <field name="arch" type="xml">
             <list>
+                <field name="tp_thickness_mm" column_invisible="1"/>
+                <field name="offcut_ref" string="ID"/>
                 <field name="name"/>
-                <field name="lot_id"/>
-                <field name="product_id"/>
                 <field name="width_mm"/>
                 <field name="height_mm"/>
-                <field name="area_mm2"/>
-                <field name="currency_id" invisible="1"/>
+                <field name="area_mm2" optional="hide"/>
+                <field name="currency_id" column_invisible="1"/>
                 <field name="remaining_value"/>
                 <field name="state"/>
                 <field name="bin_location_id"/>
-                <field name="source_type"/>
-                <field name="reserved_mo_id"/>
+                <field name="source_type" optional="hide"/>
+                <field name="lot_id" optional="hide"/>
+                <field name="product_id" optional="hide"/>
+                <field name="reserved_mo_id" optional="hide"/>
             </list>
         </field>
     </record>
@@ -27,6 +29,7 @@
         <field name="arch" type="xml">
             <form>
                 <header>
+                    <button name="action_save_and_new" type="object" string="Save &amp; New" class="btn-primary"/>
                     <button name="action_set_available" type="object" string="Set Available" invisible="state == 'available'" class="btn-secondary"/>
                     <button name="action_set_in_use" type="object" string="Set In Use" invisible="state == 'in_use'" class="btn-secondary"/>
                     <button name="action_set_sold" type="object" string="Set Sold" invisible="state == 'sold'" class="btn-secondary"/>
@@ -37,7 +40,7 @@
                 <sheet>
                     <group>
                         <group string="Core">
-                            <field name="name"/>
+                            <field name="offcut_ref" string="Offcut ID"/>
                             <field name="lot_id"/>
                             <field name="product_id" invisible="not lot_id"/>
                             <field name="manual_product_id" string="Product" invisible="lot_id" required="not lot_id"/>
@@ -91,6 +94,7 @@
         <field name="model">tp.offcut</field>
         <field name="arch" type="xml">
             <search>
+                <field name="offcut_ref" string="Offcut ID"/>
                 <field name="name"/>
                 <field name="product_id"/>
                 <field name="state"/>
@@ -102,6 +106,7 @@
                 <filter string="In Use" name="in_use" domain="[('state', '=', 'in_use')]"/>
                 <filter string="Sold" name="sold" domain="[('state', '=', 'sold')]"/>
                 <group>
+                    <filter string="By Thickness" name="group_thickness" context="{'group_by': 'tp_thickness_mm'}"/>
                     <filter string="By Product" name="group_product" context="{'group_by': 'product_id'}"/>
                     <filter string="By BIN" name="group_bin" context="{'group_by': 'bin_location_id'}"/>
                     <filter string="By State" name="group_state" context="{'group_by': 'state'}"/>
@@ -115,5 +120,6 @@
         <field name="res_model">tp.offcut</field>
         <field name="view_mode">list,form</field>
         <field name="search_view_id" ref="view_tp_offcut_search"/>
+        <field name="context">{'search_default_group_thickness': 1}</field>
     </record>
 </odoo>

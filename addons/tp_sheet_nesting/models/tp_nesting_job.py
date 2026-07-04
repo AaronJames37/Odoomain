@@ -1,6 +1,17 @@
 from odoo import api, fields, models
 
 
+def _part_has_cut_outs(part):
+    """True iff a tp.web.cut.part record has any non-empty cut_outs payload."""
+    raw = part.cut_outs
+    if not raw:
+        return False
+    if isinstance(raw, (list, tuple)):
+        return any(isinstance(co, dict) for co in raw)
+    # Defensive: stored as JSON may surface as str or dict in odd code paths.
+    return bool(raw)
+
+
 class TpNestingJob(models.Model):
     _name = "tp.nesting.job"
     _description = "TP Nesting Job"
@@ -24,6 +35,38 @@ class TpNestingJob(models.Model):
     )
     allocation_ids = fields.One2many("tp.nesting.allocation", "job_id", readonly=True)
     note = fields.Char()
+
+    @api.model
+    def _tp_partition_cutout_parts(self, parts):
+        """Split a parts recordset/iterable into (kept, dropped) based on the
+        company's tp_nesting_include_cutout_parts flag.
+
+        Returns (kept, dropped) recordsets if `parts` is a recordset; otherwise
+        returns plain lists. When the flag is on, every part is kept.
+        """
+        Part = self.env["tp.web.cut.part"]
+        is_recordset = isinstance(parts, type(Part))
+        if self.env.company.tp_nesting_include_cutout_parts:
+            empty = Part.browse() if is_recordset else []
+            return parts, empty
+        kept_ids = []
+        dropped_ids = []
+        kept_list = []
+        dropped_list = []
+        for part in parts:
+            if _part_has_cut_outs(part):
+                if is_recordset:
+                    dropped_ids.append(part.id)
+                else:
+                    dropped_list.append(part)
+            else:
+                if is_recordset:
+                    kept_ids.append(part.id)
+                else:
+                    kept_list.append(part)
+        if is_recordset:
+            return Part.browse(kept_ids), Part.browse(dropped_ids)
+        return kept_list, dropped_list
 
     @api.depends("run_ids.mo_id")
     def _compute_mo_links(self):

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Per-job Run Nesting button intentionally removed.
+         Use Sheet Nesting → New Nesting Run instead, which lets the operator
+         pick a source sheet and batches all queued panels of that material. -->
+</odoo>

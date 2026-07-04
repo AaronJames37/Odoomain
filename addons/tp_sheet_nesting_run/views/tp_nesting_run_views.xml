@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_tp_nesting_run_tree_launcher" model="ir.ui.view">
+        <field name="name">tp.nesting.run.list.launcher</field>
+        <field name="model">tp.nesting.run</field>
+        <field name="inherit_id" ref="tp_sheet_nesting.view_tp_nesting_run_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//list" position="attributes">
+                <attribute name="create">false</attribute>
+            </xpath>
+            <xpath expr="//list/field[1]" position="before">
+                <header>
+                    <button name="%(action_tp_nesting_live_app)d"
+                            type="action"
+                            string="New"
+                            class="btn-primary"
+                            display="always"/>
+                </header>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_tp_nesting_run_form_run" model="ir.ui.view">
+        <field name="name">tp.nesting.run.form.run</field>
+        <field name="model">tp.nesting.run</field>
+        <field name="inherit_id" ref="tp_sheet_nesting.view_tp_nesting_run_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="before">
+                <header>
+                    <button name="action_create_mo"
+                            type="object"
+                            string="Create MO"
+                            class="btn-primary"
+                            confirm="This will create a Manufacturing Order that will consume sheet stock and (after MO completion) post to COGS. Continue?"
+                            invisible="not x_tp_can_create_mo"/>
+                    <button name="action_download_x_tp_dxf"
+                            type="object"
+                            string="Download DXFs (.zip)"
+                            class="btn-secondary"
+                            invisible="not x_tp_dxf_bytes"/>
+                </header>
+            </xpath>
+            <xpath expr="//sheet" position="inside">
+                <div class="oe_button_box" name="run_button_box">
+                    <button name="action_view_x_tp_mos"
+                            type="object"
+                            class="oe_stat_button"
+                            icon="fa-industry"
+                            invisible="x_tp_mo_count == 0">
+                        <field name="x_tp_mo_count" widget="statinfo" string="MOs"/>
+                    </button>
+                </div>
+                <group string="Run Outputs" name="x_tp_run_outputs">
+                    <field name="x_tp_source_product_id" readonly="1"
+                           invisible="not x_tp_source_product_id"/>
+                    <field name="x_tp_sheets_needed" readonly="1"
+                           invisible="not x_tp_sheets_needed"/>
+                    <field name="x_tp_panel_count" readonly="1"
+                           invisible="not x_tp_panel_count"/>
+                    <field name="x_tp_saw_operation_count" readonly="1"
+                           invisible="not x_tp_saw_operation_count"/>
+                    <field name="x_tp_trim_cut_count" readonly="1"
+                           invisible="not x_tp_trim_cut_count"/>
+                    <field name="x_tp_fence_setting_count" readonly="1"
+                           invisible="not x_tp_fence_setting_count"/>
+                    <field name="x_tp_can_create_mo" invisible="1"/>
+                    <field name="x_tp_mo_count"/>
+                    <field name="x_tp_mo_ids" readonly="1" widget="many2many_tags"
+                           options="{'no_create': True, 'no_quick_create': True}"/>
+                    <field name="x_tp_dxf_filename" readonly="1" invisible="not x_tp_dxf_filename"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

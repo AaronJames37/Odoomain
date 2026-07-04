@@ -1,0 +1,20 @@
+{
+    "name": "Website Fulfillment Status Sync",
+    "version": "1.0.0",
+    "category": "Sales",
+    "summary": "Pull website fulfillment statuses from the storefront and apply them to sales orders.",
+    "author": "Codex",
+    "license": "LGPL-3",
+    "depends": ["sale"],
+    "data": [
+        "security/ir.model.access.csv",
+        "data/ir_config_parameter.xml",
+        "data/ir_cron.xml",
+        "data/ir_actions_server.xml",
+        "views/sale_order_views.xml",
+        "views/website_fulfillment_sync_views.xml",
+        "views/res_config_settings_views.xml",
+    ],
+    "installable": True,
+    "application": False,
+}

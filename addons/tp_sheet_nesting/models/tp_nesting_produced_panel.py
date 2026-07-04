@@ -9,6 +9,7 @@ class TpNestingProducedPanel(models.Model):
     run_id = fields.Many2one("tp.nesting.run", required=True, ondelete="cascade")
     job_id = fields.Many2one(related="run_id.job_id", store=True, readonly=True)
     allocation_id = fields.Many2one("tp.nesting.allocation", ondelete="set null")
+    web_cut_part_id = fields.Many2one("tp.web.cut.part", ondelete="set null")
     source_lot_id = fields.Many2one("stock.lot", ondelete="set null")
     width_mm = fields.Integer(required=True)
     height_mm = fields.Integer(required=True)

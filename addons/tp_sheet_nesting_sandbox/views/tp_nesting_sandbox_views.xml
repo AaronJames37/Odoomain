@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_tp_nesting_sandbox_form" model="ir.ui.view">
+        <field name="name">tp.nesting.sandbox.form</field>
+        <field name="model">tp.nesting.sandbox</field>
+        <field name="arch" type="xml">
+            <form string="Nesting Sandbox">
+                <header>
+                    <button name="action_run"
+                            type="object"
+                            string="Run Preview"
+                            class="btn-primary"/>
+                    <button name="action_download_dxf"
+                            type="object"
+                            string="Download DXFs (.zip)"
+                            class="btn-secondary"
+                            invisible="not result_dxf_bytes"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,done,failed"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="job_id" readonly="1"/>
+                            <field name="sale_order_id" readonly="1"/>
+                            <field name="demand_product_id" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="sheet_format_id"
+                                   options="{'no_create': True, 'no_open': True}"/>
+                            <field name="kerf_mm"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Summary">
+                            <field name="result_summary" readonly="1" nolabel="1"
+                                   widget="text"/>
+                        </page>
+                        <page string="Preview">
+                            <field name="result_svg" readonly="1" nolabel="1" widget="html"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <footer>
+                    <button string="Close" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Add 'Preview Nest' button to the tp.nesting.job form header -->
+    <record id="view_tp_nesting_job_form_sandbox" model="ir.ui.view">
+        <field name="name">tp.nesting.job.form.sandbox</field>
+        <field name="model">tp.nesting.job</field>
+        <field name="inherit_id" ref="tp_sheet_nesting.view_tp_nesting_job_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form/header" position="inside">
+                <button name="action_open_nesting_sandbox"
+                        type="object"
+                        string="Preview Nest"
+                        class="btn-primary"
+                        invisible="website_panel_count == 0"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

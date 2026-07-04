@@ -25,6 +25,12 @@
         <field name="model">tp.nesting.run</field>
         <field name="arch" type="xml">
             <form>
+                <header>
+                    <button name="%(action_report_tp_nesting_run)d"
+                            string="Download PDF Preview"
+                            type="action"
+                            class="btn-primary"/>
+                </header>
                 <sheet>
                     <group>
                         <group>

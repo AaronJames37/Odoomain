@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- QWeb document template for a single nesting run -->
+    <template id="report_tp_nesting_run_document">
+        <t t-call="web.external_layout">
+            <div class="page">
+                <div style="width:100%; text-align:center;">
+                    <t t-raw="doc.nesting_svg or ''"/>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <template id="report_tp_nesting_run">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="tp_sheet_nesting.report_tp_nesting_run_document"/>
+            </t>
+        </t>
+    </template>
+
+    <record id="action_report_tp_nesting_run" model="ir.actions.report">
+        <field name="name">Nesting Run Preview</field>
+        <field name="model">tp.nesting.run</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">tp_sheet_nesting.report_tp_nesting_run</field>
+        <field name="report_file">tp_sheet_nesting.report_tp_nesting_run</field>
+        <field name="binding_model_id" ref="model_tp_nesting_run"/>
+        <field name="binding_type">report</field>
+        <field name="print_report_name">'Nesting Run - %s' % (object.name or '').replace('/', '_')</field>
+    </record>
+
+    <!-- QWeb document template for an MO's last nesting run preview -->
+    <template id="report_tp_mo_nesting_document">
+        <t t-call="web.external_layout">
+            <div class="page">
+                <div style="width:100%; text-align:center;">
+                    <t t-raw="doc.tp_last_nesting_svg or ''"/>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <template id="report_tp_mo_nesting">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="tp_sheet_nesting.report_tp_mo_nesting_document"/>
+            </t>
+        </t>
+    </template>
+
+    <record id="action_report_tp_mo_nesting" model="ir.actions.report">
+        <field name="name">MO Nesting Preview</field>
+        <field name="model">mrp.production</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">tp_sheet_nesting.report_tp_mo_nesting</field>
+        <field name="report_file">tp_sheet_nesting.report_tp_mo_nesting</field>
+        <field name="binding_model_id" ref="mrp.model_mrp_production"/>
+        <field name="binding_type">report</field>
+        <field name="print_report_name">'Nesting Preview - %s' % (object.name or '').replace('/', '_')</field>
+    </record>
+</odoo>

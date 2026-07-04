@@ -23,12 +23,14 @@ class Tp2DNestingEngine(
         self,
         *,
         kerf_mm=3,
+        trim_edge_mm=0,
         timeout_ms=2000,
         sheet_size_candidate_limit=25,
         beam_width=6,
         branch_cap=12,
         mode="optimal",
         kernel_name="maxrects",
+        guillotine_rip_first=False,
         enable_local_improvement=True,
         local_improvement_max_steps=6,
         late_acceptance_window=4,
@@ -47,6 +49,7 @@ class Tp2DNestingEngine(
         timeout_cap_ms=15000,
     ):
         self.kerf_mm = max(int(kerf_mm or 0), 0)
+        self.trim_edge_mm = max(int(trim_edge_mm or 0), 0)
         self.timeout_ms = int(timeout_ms or 0)
         self.sheet_size_candidate_limit = max(1, int(sheet_size_candidate_limit or 1))
         self.max_pieces = max(1, int(max_pieces or 1))
@@ -62,7 +65,12 @@ class Tp2DNestingEngine(
             self.timeout_ms = min(self.timeout_ms, self.timeout_cap_ms)
         self.mode = mode
         self.kernel_name = kernel_name or "maxrects"
-        self.kernel = get_nesting_kernel(self.kernel_name, kerf_mm=self.kerf_mm)
+        self.guillotine_rip_first = bool(guillotine_rip_first)
+        self.kernel = get_nesting_kernel(
+            self.kernel_name,
+            kerf_mm=self.kerf_mm,
+            guillotine_rip_first=self.guillotine_rip_first,
+        )
         self.enable_local_improvement = bool(enable_local_improvement)
         self.local_improvement_max_steps = max(0, int(local_improvement_max_steps or 0))
         self.late_acceptance_window = max(1, int(late_acceptance_window or 1))
@@ -122,6 +130,8 @@ class Tp2DNestingEngine(
                 "beam_width_cap": int(self.beam_width_cap),
                 "timeout_cap_ms": int(self.timeout_cap_ms),
                 "effective_timeout_ms": int(self.timeout_ms),
+                "kerf_mm": int(self.kerf_mm),
+                "trim_edge_mm": int(self.trim_edge_mm),
                 "effective_beam_width": int(self.beam_width),
                 "effective_branch_cap": int(self.branch_cap),
             },
@@ -162,6 +172,8 @@ class Tp2DNestingEngine(
                     "beam_width_cap": self.beam_width_cap,
                     "timeout_cap_ms": self.timeout_cap_ms,
                     "effective_timeout_ms": self.timeout_ms,
+                    "kerf_mm": self.kerf_mm,
+                    "trim_edge_mm": self.trim_edge_mm,
                     "effective_beam_width": self.beam_width,
                     "effective_branch_cap": self.branch_cap,
                     "infeasible_reason": "",
@@ -216,6 +228,8 @@ class Tp2DNestingEngine(
                     "beam_width_cap": self.beam_width_cap,
                     "timeout_cap_ms": self.timeout_cap_ms,
                     "effective_timeout_ms": self.timeout_ms,
+                    "kerf_mm": self.kerf_mm,
+                    "trim_edge_mm": self.trim_edge_mm,
                     "effective_beam_width": self.beam_width,
                     "effective_branch_cap": self.branch_cap,
                     "infeasible_reason": reason,
@@ -325,6 +339,8 @@ class Tp2DNestingEngine(
                     "beam_width_cap": self.beam_width_cap,
                     "timeout_cap_ms": self.timeout_cap_ms,
                     "effective_timeout_ms": self.timeout_ms,
+                    "kerf_mm": self.kerf_mm,
+                    "trim_edge_mm": self.trim_edge_mm,
                     "effective_beam_width": self.beam_width,
                     "effective_branch_cap": self.branch_cap,
                     "infeasible_reason": "no_compatible_source",
@@ -437,8 +453,10 @@ class Tp2DNestingEngine(
                 "max_pieces": self.max_pieces,
                 "beam_width_cap": self.beam_width_cap,
                 "timeout_cap_ms": self.timeout_cap_ms,
-                "effective_timeout_ms": self.timeout_ms,
-                "effective_beam_width": self.beam_width,
+                    "effective_timeout_ms": self.timeout_ms,
+                    "kerf_mm": self.kerf_mm,
+                    "trim_edge_mm": self.trim_edge_mm,
+                    "effective_beam_width": self.beam_width,
                 "effective_branch_cap": self.branch_cap,
                 "infeasible_reason": "",
                 "candidate_plan_count": len(runs),

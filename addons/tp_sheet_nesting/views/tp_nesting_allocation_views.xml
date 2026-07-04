@@ -12,6 +12,8 @@
                 <field name="source_offcut_id"/>
                 <field name="source_sheet_format_id"/>
                 <field name="source_lot_id"/>
+                <field name="source_so_line_id"/>
+                <field name="web_cut_part_id"/>
                 <field name="source_bin_key"/>
                 <field name="cut_width_mm"/>
                 <field name="cut_height_mm"/>
@@ -43,6 +45,8 @@
                             <field name="source_offcut_id" invisible="source_type != 'offcut'"/>
                             <field name="source_sheet_format_id" invisible="source_type != 'sheet'"/>
                             <field name="source_lot_id"/>
+                            <field name="source_so_line_id"/>
+                            <field name="web_cut_part_id"/>
                             <field name="source_bin_key"/>
                             <field name="source_bin_label"/>
                         </group>
@@ -68,6 +72,7 @@
             <search>
                 <field name="run_id"/>
                 <field name="mo_id"/>
+                <field name="web_cut_part_id"/>
                 <field name="source_type"/>
                 <field name="status"/>
                 <filter string="Offcut Source" name="source_offcut" domain="[('source_type', '=', 'offcut')]"/>

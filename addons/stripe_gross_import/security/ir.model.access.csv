@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_stripe_gross_connection_manager,stripe.gross.connection.manager,model_stripe_gross_connection,account.group_account_manager,1,1,1,1
+access_stripe_gross_transaction_manager,stripe.gross.transaction.manager,model_stripe_gross_transaction,account.group_account_manager,1,1,1,0
+access_stripe_gross_connection_user,stripe.gross.connection.user,model_stripe_gross_connection,account.group_account_user,1,0,0,0
+access_stripe_gross_transaction_user,stripe.gross.transaction.user,model_stripe_gross_transaction,account.group_account_user,1,0,0,0

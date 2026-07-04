@@ -1,8 +1,14 @@
-from odoo import models
+from odoo import fields, models
 
 
 class SaleOrder(models.Model):
     _inherit = "sale.order"
+
+    tp_web_cut_part_ids = fields.One2many(
+        "tp.web.cut.part",
+        "sale_order_id",
+        string="Website Production Parts",
+    )
 
     @staticmethod
     def _tp_group_key_from_product(product):
@@ -35,18 +41,24 @@ class SaleOrder(models.Model):
         keeper_mo.tp_cut_line_ids.unlink()
         create_vals = []
         for line in source_lines:
-            qty = int(round(line.product_uom_qty or 0.0))
-            if qty <= 0 or line.tp_width_mm <= 0 or line.tp_height_mm <= 0:
-                continue
-            create_vals.append(
-                {
-                    "mo_id": keeper_mo.id,
-                    "source_so_line_id": line.id,
-                    "width_mm": line.tp_width_mm,
-                    "height_mm": line.tp_height_mm,
-                    "quantity": qty,
-                }
+            web_parts = line.tp_web_cut_part_ids.filtered("active").sorted(
+                key=lambda p: (p.panel_index, p.instance_index, p.id)
             )
+            if web_parts:
+                create_vals.extend(part._tp_cut_line_vals(keeper_mo) for part in web_parts)
+            else:
+                qty = int(round(line.product_uom_qty or 0.0))
+                if qty <= 0 or line.tp_width_mm <= 0 or line.tp_height_mm <= 0:
+                    continue
+                create_vals.append(
+                    {
+                        "mo_id": keeper_mo.id,
+                        "source_so_line_id": line.id,
+                        "width_mm": line.tp_width_mm,
+                        "height_mm": line.tp_height_mm,
+                        "quantity": qty,
+                    }
+                )
         if create_vals:
             self.env["tp.mo.cut.line"].create(create_vals)
 

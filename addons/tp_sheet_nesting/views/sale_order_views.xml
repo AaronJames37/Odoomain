@@ -13,6 +13,28 @@
                 <field name="tp_width_mm" optional="show"/>
                 <field name="tp_height_mm" optional="show"/>
             </xpath>
+            <xpath expr="//sheet/notebook" position="inside">
+                <page string="Website Production Parts">
+                    <field name="tp_web_cut_part_ids">
+                        <list editable="bottom" create="false" delete="false">
+                            <field name="part_key" readonly="1"/>
+                            <field name="sale_order_line_id" readonly="1"/>
+                            <field name="line_index" readonly="1"/>
+                            <field name="panel_index" readonly="1"/>
+                            <field name="instance_index" readonly="1"/>
+                            <field name="sku" readonly="1"/>
+                            <field name="label" optional="show"/>
+                            <field name="material" readonly="1"/>
+                            <field name="colour" readonly="1"/>
+                            <field name="thickness_mm" readonly="1"/>
+                            <field name="width_mm"/>
+                            <field name="height_mm"/>
+                            <field name="quantity"/>
+                            <field name="shape" readonly="1"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
         </field>
     </record>
 </odoo>

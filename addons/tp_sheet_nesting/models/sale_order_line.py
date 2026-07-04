@@ -35,6 +35,11 @@ class SaleOrderLine(models.Model):
         string="Thickness Option",
         domain="[('top_level_template_id', '=', product_template_id)]",
     )
+    tp_web_cut_part_ids = fields.One2many(
+        "tp.web.cut.part",
+        "sale_order_line_id",
+        string="Website Production Parts",
+    )
 
     @api.constrains("tp_width_mm", "tp_height_mm")
     def _check_tp_dimensions_positive(self):

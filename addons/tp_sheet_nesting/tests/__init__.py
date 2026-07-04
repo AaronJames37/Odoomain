@@ -2,6 +2,7 @@ from . import test_phase1_sale_to_mo
 from . import test_phase4_deterministic_nesting
 from . import test_phase5_optimal_nesting
 from . import test_phase5_1_mo_consolidation
+from . import test_web_cut_part_manifest
 from . import test_phase6_operational_lifecycle
 from . import test_optimizer_phase_o0_benchmark
 from . import test_optimizer_phase_o1_source_pool

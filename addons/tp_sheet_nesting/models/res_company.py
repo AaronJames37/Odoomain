@@ -3,6 +3,28 @@ from odoo import fields, models
 
 class ResCompany(models.Model):
     _inherit = "res.company"
+    tp_nesting_kerf_mm = fields.Integer(
+        default=3,
+        string="Nesting Kerf (mm)",
+    )
+    tp_nesting_trim_edge_mm = fields.Integer(
+        default=0,
+        string="Trim Edge (mm, discontinued)",
+        help="Deprecated. Trim edge is no longer used by the sheet nesting solver.",
+    )
+    tp_nesting_guillotine_seconds = fields.Integer(
+        default=10,
+        string="Guillotine Search Time (s)",
+        help="How long the CutList-grade guillotine (panel-saw) optimiser may "
+             "search for the best layout. Longer = better utilisation on big jobs.",
+    )
+    tp_nesting_offcut_min_usage_pct = fields.Integer(
+        default=80,
+        string="Offcut Min Usage (%)",
+        help="Use an offcut before opening a fresh sheet only if the job fills it "
+             "to at least this percentage. Stops a barely-used offcut being "
+             "consumed when a fresh sheet would be tidier. 0 = always use offcuts.",
+    )
     tp_nesting_engine_mode = fields.Selection(
         [("optimal", "Optimal"), ("deterministic", "Deterministic")],
         default="optimal",
@@ -84,3 +106,13 @@ class ResCompany(models.Model):
     )
     tp_nesting_timeout_ms = fields.Integer(default=2000, string="Nesting Timeout (ms)")
     tp_nesting_fallback_enabled = fields.Boolean(default=True, string="Fallback To Deterministic")
+    tp_nesting_include_cutout_parts = fields.Boolean(
+        default=True,
+        string="Include Cut-Out Parts In Nesting",
+        help=(
+            "When enabled (default), panels with inner cut-outs are included "
+            "in nesting runs. Disable to silently skip any panel whose "
+            "cut_outs payload is non-empty — useful while the CAM-side "
+            "support for cut-outs is still being validated."
+        ),
+    )

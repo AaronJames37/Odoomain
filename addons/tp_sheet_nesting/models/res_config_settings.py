@@ -3,6 +3,22 @@ from odoo import fields, models
 
 class ResConfigSettings(models.TransientModel):
     _inherit = "res.config.settings"
+    tp_nesting_kerf_mm = fields.Integer(
+        related="company_id.tp_nesting_kerf_mm",
+        readonly=False,
+    )
+    tp_nesting_trim_edge_mm = fields.Integer(
+        related="company_id.tp_nesting_trim_edge_mm",
+        readonly=False,
+    )
+    tp_nesting_guillotine_seconds = fields.Integer(
+        related="company_id.tp_nesting_guillotine_seconds",
+        readonly=False,
+    )
+    tp_nesting_offcut_min_usage_pct = fields.Integer(
+        related="company_id.tp_nesting_offcut_min_usage_pct",
+        readonly=False,
+    )
     tp_nesting_engine_mode = fields.Selection(
         related="company_id.tp_nesting_engine_mode",
         readonly=False,
@@ -77,5 +93,9 @@ class ResConfigSettings(models.TransientModel):
     )
     tp_nesting_fallback_enabled = fields.Boolean(
         related="company_id.tp_nesting_fallback_enabled",
+        readonly=False,
+    )
+    tp_nesting_include_cutout_parts = fields.Boolean(
+        related="company_id.tp_nesting_include_cutout_parts",
         readonly=False,
     )

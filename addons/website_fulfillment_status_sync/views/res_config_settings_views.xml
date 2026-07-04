@@ -1,0 +1,48 @@
+<odoo>
+    <record id="res_config_settings_view_form_website_fulfillment" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.website.fulfillment</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="sale.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <block title="Website Fulfillment Sync" name="website_fulfillment_sync_block">
+                    <setting id="website_fulfillment_sync_setting"
+                             help="Pull fulfillment statuses from the storefront and apply them to sales orders.">
+                        <div class="content-group">
+                            <div class="row mt16">
+                                <label for="website_fulfillment_base_url" class="col-lg-3 o_light_label"/>
+                                <field name="website_fulfillment_base_url"/>
+                            </div>
+                            <div class="row mt16">
+                                <label for="website_fulfillment_token" class="col-lg-3 o_light_label"/>
+                                <field name="website_fulfillment_token" password="True"/>
+                            </div>
+                            <div class="row mt16">
+                                <label for="website_fulfillment_statuses" class="col-lg-3 o_light_label"/>
+                                <field name="website_fulfillment_statuses"/>
+                            </div>
+                            <div class="row mt16">
+                                <label for="website_fulfillment_limit" class="col-lg-3 o_light_label"/>
+                                <field name="website_fulfillment_limit"/>
+                            </div>
+                            <div class="row mt16">
+                                <label for="website_fulfillment_reconcile_statuses" class="col-lg-3 o_light_label"/>
+                                <field name="website_fulfillment_reconcile_statuses"/>
+                            </div>
+                            <div class="mt16">
+                                <button type="object"
+                                        name="action_website_fulfillment_test_connection"
+                                        string="Test Connection"
+                                        class="btn-secondary"/>
+                                <button type="object"
+                                        name="action_website_fulfillment_sync_now"
+                                        string="Sync Now"
+                                        class="btn-primary"/>
+                            </div>
+                        </div>
+                    </setting>
+                </block>
+            </xpath>
+        </field>
+    </record>
+</odoo>

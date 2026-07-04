@@ -5,11 +5,18 @@
         <field name="model">tp.offcut.bin.rule</field>
         <field name="arch" type="xml">
             <list>
+                <header>
+                    <button name="action_reapply_bin_rules" type="object"
+                            string="Re-apply to Existing Offcuts" class="btn-primary"/>
+                </header>
                 <field name="sequence" widget="handle"/>
                 <field name="name"/>
                 <field name="active"/>
+                <field name="thicknesses_mm"/>
                 <field name="min_width_mm"/>
                 <field name="min_height_mm"/>
+                <field name="max_width_mm"/>
+                <field name="max_height_mm"/>
                 <field name="bin_location_id"/>
             </list>
         </field>
@@ -26,9 +33,14 @@
                         <field name="active"/>
                         <field name="sequence"/>
                     </group>
-                    <group>
+                    <group string="Matching">
+                        <field name="thicknesses_mm" placeholder="e.g. 2,3 (blank = any)"/>
+                        <field name="max_width_mm"/>
+                        <field name="max_height_mm"/>
                         <field name="min_width_mm"/>
                         <field name="min_height_mm"/>
+                    </group>
+                    <group string="Destination">
                         <field name="bin_location_id"/>
                     </group>
                 </sheet>

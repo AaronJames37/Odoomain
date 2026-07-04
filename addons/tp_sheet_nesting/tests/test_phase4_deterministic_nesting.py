@@ -264,7 +264,12 @@ class TestPhase4DeterministicNesting(TransactionCase):
 
     def test_sheet_source_creates_waste_when_remainder_too_small(self):
         mo = self._create_mo(width_mm=500, height_mm=300, quantity=1)
-        self._create_sheet_format(name="P4-SHEET-3", width_mm=700, height_mm=500, landed_cost=80.0)
+        # Sheet sized so the leftover is genuinely too small to be a reusable
+        # offcut in every fitting orientation (650-500-kerf = 147 < 200mm).
+        # NB: a 700x500 sheet no longer works here, because kerf is correctly
+        # no longer charged against the sheet edge -- the 300x500 rotation now
+        # fits full-height and yields a reusable 397x500 offcut, not waste.
+        self._create_sheet_format(name="P4-SHEET-3", width_mm=650, height_mm=450, landed_cost=80.0)
 
         mo.action_run_tp_nesting()
 

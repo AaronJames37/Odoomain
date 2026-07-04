@@ -1,0 +1,96 @@
+<odoo>
+    <record id="view_ebay_gross_connection_form" model="ir.ui.view">
+        <field name="name">ebay.gross.connection.form</field>
+        <field name="model">ebay.gross.connection</field>
+        <field name="arch" type="xml">
+            <form string="eBay Gross Import">
+                <header>
+                    <button name="action_test_connection" type="object" string="Test Connection"/>
+                    <button name="action_fetch_new_transactions" type="object" string="Fetch New" class="btn-primary"/>
+                    <button name="action_fetch_from_start_date" type="object" string="Fetch From Start Date"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_transactions" type="object" class="oe_stat_button" icon="fa-list">
+                            <field name="transaction_count" widget="statinfo" string="Transactions"/>
+                        </button>
+                    </div>
+                    <group>
+                        <group string="Connection">
+                            <field name="name"/>
+                            <field name="active"/>
+                            <field name="auto_import"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="environment"/>
+                            <field name="marketplace_id"/>
+                        </group>
+                        <group string="Credentials">
+                            <field name="ebay_client_id"/>
+                            <field name="ebay_client_secret" password="True"/>
+                            <field name="ebay_refresh_token" password="True"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Mapping">
+                            <field name="journal_id"/>
+                            <field name="currency_code"/>
+                        </group>
+                        <group string="Sync">
+                            <field name="import_start_date"/>
+                            <field name="lookback_hours"/>
+                            <field name="limit_per_run"/>
+                            <field name="last_successful_import_at"/>
+                            <field name="last_ebay_updated_at"/>
+                        </group>
+                    </group>
+                    <group string="Last Run">
+                        <field name="last_import_summary" nolabel="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_ebay_gross_connection_list" model="ir.ui.view">
+        <field name="name">ebay.gross.connection.list</field>
+        <field name="model">ebay.gross.connection</field>
+        <field name="arch" type="xml">
+            <list string="eBay Gross Import">
+                <field name="name"/>
+                <field name="environment"/>
+                <field name="journal_id"/>
+                <field name="transaction_count"/>
+                <field name="last_successful_import_at"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_ebay_gross_transaction_list" model="ir.ui.view">
+        <field name="name">ebay.gross.transaction.list</field>
+        <field name="model">ebay.gross.transaction</field>
+        <field name="arch" type="xml">
+            <list string="eBay Gross Transactions">
+                <field name="ebay_transaction_at"/>
+                <field name="ebay_transaction_id"/>
+                <field name="ebay_transaction_type"/>
+                <field name="ebay_booking_entry"/>
+                <field name="gross_amount"/>
+                <field name="fee_amount"/>
+                <field name="currency_id"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_ebay_gross_connection" model="ir.actions.act_window">
+        <field name="name">eBay Gross Import</field>
+        <field name="res_model">ebay.gross.connection</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="menu_ebay_gross_root" name="eBay Gross Import"
+              parent="account.menu_finance" sequence="100"/>
+    <menuitem id="menu_ebay_gross_connection" name="Connections"
+              parent="menu_ebay_gross_root" action="action_ebay_gross_connection"/>
+</odoo>

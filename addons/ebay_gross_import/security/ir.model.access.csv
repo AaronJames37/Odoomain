@@ -1,0 +1,4 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_ebay_gross_connection_manager,ebay.gross.connection.manager,model_ebay_gross_connection,account.group_account_manager,1,1,1,1
+access_ebay_gross_transaction_manager,ebay.gross.transaction.manager,model_ebay_gross_transaction,account.group_account_manager,1,1,1,1
+access_ebay_gross_transaction_user,ebay.gross.transaction.user,model_ebay_gross_transaction,account.group_account_user,1,0,0,0

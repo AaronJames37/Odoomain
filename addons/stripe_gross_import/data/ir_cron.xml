@@ -1,0 +1,11 @@
+<odoo noupdate="1">
+    <record id="ir_cron_stripe_gross_import" model="ir.cron">
+        <field name="name">Stripe Gross Import: Pull &amp; Reconcile</field>
+        <field name="model_id" ref="model_stripe_gross_connection"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_stripe_run_all()</field>
+        <field name="interval_number">15</field>
+        <field name="interval_type">minutes</field>
+        <field name="active" eval="True"/>
+    </record>
+</odoo>

@@ -1,0 +1,37 @@
+<odoo>
+    <record id="view_order_form_website_fulfillment" model="ir.ui.view">
+        <field name="name">sale.order.form.website.fulfillment</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="inside">
+                <group string="Website Fulfillment" name="website_fulfillment">
+                    <group>
+                        <field name="website_fulfillment_status"/>
+                        <field name="website_fulfillment_status_raw"/>
+                        <field name="website_payment_status"/>
+                        <field name="website_sync_status"/>
+                    </group>
+                    <group>
+                        <field name="website_storefront_order_id"/>
+                        <field name="website_public_token"/>
+                        <field name="website_storefront_created_at"/>
+                        <field name="website_storefront_updated_at"/>
+                        <field name="website_fulfillment_synced_at"/>
+                    </group>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_order_list_website_fulfillment" model="ir.ui.view">
+        <field name="name">sale.order.list.website.fulfillment</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='state']" position="before">
+                <field name="website_fulfillment_status" optional="show"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

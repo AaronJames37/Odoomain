@@ -9,7 +9,8 @@
         "security/ir.model.access.csv",
         "data/tp_storefront_settings_data.xml",
         "views/product_template_views.xml",
-        "views/tp_storefront_settings_views.xml"
+        "views/tp_storefront_settings_views.xml",
+        "views/tp_storefront_order_audit_views.xml"
     ],
     "installable": True,
     "application": True

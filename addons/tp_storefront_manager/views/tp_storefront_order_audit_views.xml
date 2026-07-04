@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- List view: one row per cross-reference, colored by severity. -->
+    <record id="view_tp_storefront_order_audit_list" model="ir.ui.view">
+        <field name="name">tp.storefront.order.audit.list</field>
+        <field name="model">tp.storefront.order.audit</field>
+        <field name="arch" type="xml">
+            <list create="false" delete="false" edit="false"
+                  decoration-danger="severity == 'major'"
+                  decoration-warning="severity == 'minor'"
+                  decoration-muted="severity == 'none'">
+                <header>
+                    <button name="action_refresh_audit"
+                            type="object"
+                            string="Refresh Audit"
+                            class="btn-primary"
+                            display="always"/>
+                </header>
+                <field name="severity" widget="badge"
+                       decoration-danger="severity == 'major'"
+                       decoration-warning="severity == 'minor'"
+                       decoration-muted="severity == 'none'"/>
+                <field name="presence"/>
+                <field name="odoo_so_name"/>
+                <field name="storefront_id"/>
+                <field name="odoo_partner_email"/>
+                <field name="storefront_email" optional="hide"/>
+                <field name="odoo_total" sum="Odoo total"/>
+                <field name="storefront_total" sum="Website total"/>
+                <field name="total_diff" sum="Δ"/>
+                <field name="odoo_fulfillment_status" optional="show"/>
+                <field name="storefront_fulfillment_status" optional="show"/>
+                <field name="storefront_payment_status" optional="show"/>
+                <field name="mismatch_flags" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Form view: side-by-side diff per row. -->
+    <record id="view_tp_storefront_order_audit_form" model="ir.ui.view">
+        <field name="name">tp.storefront.order.audit.form</field>
+        <field name="model">tp.storefront.order.audit</field>
+        <field name="arch" type="xml">
+            <form string="Storefront Cross-Reference" create="false" edit="false" delete="false">
+                <header>
+                    <field name="severity" widget="statusbar"
+                           statusbar_visible="none,minor,major"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="display_name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group string="Odoo">
+                            <field name="odoo_so_id" readonly="1"/>
+                            <field name="odoo_so_name" readonly="1"/>
+                            <field name="odoo_partner_email" readonly="1"/>
+                            <field name="odoo_total" readonly="1"/>
+                            <field name="odoo_state" readonly="1"/>
+                            <field name="odoo_fulfillment_status" readonly="1"/>
+                            <field name="odoo_date_order" readonly="1"/>
+                        </group>
+                        <group string="Website (storefront_orders)">
+                            <field name="storefront_id" readonly="1"/>
+                            <field name="storefront_public_token" readonly="1"/>
+                            <field name="storefront_email" readonly="1"/>
+                            <field name="storefront_total" readonly="1"/>
+                            <field name="storefront_payment_status" readonly="1"/>
+                            <field name="storefront_fulfillment_status" readonly="1"/>
+                            <field name="storefront_sync_status" readonly="1"/>
+                            <field name="storefront_created_at" readonly="1"/>
+                        </group>
+                    </group>
+                    <group string="Diff">
+                        <field name="presence" readonly="1"/>
+                        <field name="mismatch_flags" readonly="1"/>
+                        <field name="total_diff" readonly="1"/>
+                        <field name="mismatch_summary" readonly="1" nolabel="0"/>
+                    </group>
+                    <div class="alert alert-info" role="alert">
+                        <strong>Audit-only.</strong> This screen reads from
+                        Odoo and the website but never modifies either side.
+                        Use the deltas above as a starting point for manual
+                        investigation.
+                    </div>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search / filter view -->
+    <record id="view_tp_storefront_order_audit_search" model="ir.ui.view">
+        <field name="name">tp.storefront.order.audit.search</field>
+        <field name="model">tp.storefront.order.audit</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="odoo_so_name"/>
+                <field name="storefront_id"/>
+                <field name="odoo_partner_email"/>
+                <field name="storefront_email"/>
+                <field name="mismatch_flags"/>
+                <filter name="filter_major" string="Major issues"
+                        domain="[('severity', '=', 'major')]"/>
+                <filter name="filter_minor" string="Minor issues"
+                        domain="[('severity', '=', 'minor')]"/>
+                <filter name="filter_clean" string="Clean (OK)"
+                        domain="[('severity', '=', 'none')]"/>
+                <separator/>
+                <filter name="filter_missing_odoo" string="Missing in Odoo"
+                        domain="[('presence', '=', 'website_only')]"/>
+                <filter name="filter_missing_web" string="Missing on Website"
+                        domain="[('presence', '=', 'odoo_only')]"/>
+                <separator/>
+                <filter name="group_severity" string="Severity"
+                        context="{'group_by': 'severity'}"/>
+                <filter name="group_presence" string="Presence"
+                        context="{'group_by': 'presence'}"/>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action: refresh + open list. Server action so menu click runs the fetch. -->
+    <record id="action_tp_storefront_order_audit_refresh" model="ir.actions.server">
+        <field name="name">Order Cross-Reference Audit</field>
+        <field name="model_id" ref="model_tp_storefront_order_audit"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_refresh_audit()</field>
+    </record>
+
+    <menuitem
+        id="menu_tp_storefront_order_audit"
+        name="Order Cross-Reference"
+        parent="menu_tp_storefront_root"
+        action="action_tp_storefront_order_audit_refresh"
+        sequence="30"
+        groups="base.group_system"/>
+</odoo>

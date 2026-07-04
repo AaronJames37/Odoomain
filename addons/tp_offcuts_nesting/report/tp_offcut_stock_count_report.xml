@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Report action: appears under the Offcuts list "Print" menu. -->
+    <record id="action_report_tp_offcut_stock_count" model="ir.actions.report">
+        <field name="name">Offcut Stock Count</field>
+        <field name="model">tp.offcut</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">tp_offcuts_nesting.report_tp_offcut_stock_count</field>
+        <field name="report_file">tp_offcuts_nesting.report_tp_offcut_stock_count</field>
+        <field name="binding_model_id" ref="model_tp_offcut"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_tp_offcut_stock_count">
+        <t t-call="web.html_container">
+            <t t-call="web.basic_layout">
+                <div class="page">
+                    <h2 style="margin-bottom:4px;">Offcut Stock Count</h2>
+                    <p style="color:#666; margin-top:0;">
+                        Available offcuts grouped by thickness.
+                        Generated <span t-esc="context_timestamp(datetime.datetime.now()).strftime('%Y-%m-%d %H:%M')"/>.
+                    </p>
+                    <t t-set="groups" t-value="env['tp.offcut']._tp_stock_count_groups()"/>
+                    <t t-foreach="groups" t-as="g">
+                        <h3 style="margin-top:18px; border-bottom:2px solid #333; padding-bottom:2px;">
+                            <span t-esc="('%g' % g['thickness']).rstrip('.')"/>mm
+                            <span style="font-weight:normal; color:#666; font-size:0.8em;">
+                                (<span t-esc="g['count']"/> offcut<t t-if="g['count'] != 1">s</t>)
+                            </span>
+                        </h3>
+                        <table class="table table-sm" style="width:100%; border-collapse:collapse;">
+                            <thead>
+                                <tr style="border-bottom:1px solid #999; text-align:left;">
+                                    <th style="width:12%;">ID</th>
+                                    <th style="width:18%;">Width (mm)</th>
+                                    <th style="width:18%;">Height (mm)</th>
+                                    <th style="width:18%;">Thickness (mm)</th>
+                                    <th style="width:22%;">Bin</th>
+                                    <th style="width:12%;">Count ✓</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="g['lines']" t-as="l" style="border-bottom:1px solid #eee;">
+                                    <td><strong t-esc="l['ref']"/></td>
+                                    <td t-esc="l['width_mm']"/>
+                                    <td t-esc="l['height_mm']"/>
+                                    <td t-esc="('%g' % l['thickness_mm']).rstrip('.')"/>
+                                    <td t-esc="l['bin']"/>
+                                    <td style="border:1px solid #ccc; width:60px;">&#160;</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </t>
+                    <t t-if="not groups">
+                        <p><em>No available offcuts to count.</em></p>
+                    </t>
+                </div>
+            </t>
+        </t>
+    </template>
+</odoo>

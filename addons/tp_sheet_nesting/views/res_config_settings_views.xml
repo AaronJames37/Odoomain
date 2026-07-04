@@ -7,6 +7,24 @@
         <field name="arch" type="xml">
             <xpath expr="//app[@name='stock']" position="after">
                 <app data-string="Sheet Nesting" string="Sheet Nesting" name="tp_sheet_nesting" logo="/tp_sheet_nesting/static/description/settings_icon.svg" groups="mrp.group_mrp_manager">
+                    <block title="Cutting Allowances" name="tp_sheet_nesting_cutting_allowances">
+                        <setting id="tp_nesting_kerf_mm_setting" help="Tool kerf width added around each nested panel.">
+                            <field name="tp_nesting_kerf_mm"/>
+                        </setting>
+                        <setting id="tp_nesting_guillotine_seconds_setting" help="How long the CutList-grade guillotine (panel-saw) optimiser may search for the best layout. Longer = better utilisation on big jobs.">
+                            <field name="tp_nesting_guillotine_seconds"/>
+                        </setting>
+                        <setting id="tp_nesting_offcut_min_usage_setting" help="Use an offcut before opening a fresh sheet only if the job fills it to at least this percentage. Stops a barely-used offcut being consumed when a fresh sheet would be tidier. 0 = always use offcuts.">
+                            <field name="tp_nesting_offcut_min_usage_pct"/>
+                        </setting>
+                    </block>
+                    <block title="Feature Support" name="tp_sheet_nesting_feature_support">
+                        <setting id="tp_nesting_include_cutout_parts_setting"
+                                 string="Include Cut-Out Parts"
+                                 help="Off: any panel whose cut_outs payload is non-empty is silently skipped from nesting runs (sandbox + production). Use while CAM-side cut-out support is being validated. On (default): include cut-out panels in the nest.">
+                            <field name="tp_nesting_include_cutout_parts"/>
+                        </setting>
+                    </block>
                     <block title="Optimizer" name="tp_sheet_nesting_settings_container">
                         <setting id="tp_nesting_engine_mode_setting" help="Select optimal engine or deterministic fallback.">
                             <field name="tp_nesting_engine_mode"/>

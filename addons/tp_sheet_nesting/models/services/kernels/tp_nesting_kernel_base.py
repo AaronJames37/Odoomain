@@ -43,8 +43,14 @@ class TpNestingKernelBase:
         return pruned
 
     def _make_placement(self, *, rect_idx, rect, fit_w, fit_h, rotated):
-        used_w = int(fit_w + self.kerf_mm)
-        used_h = int(fit_h + self.kerf_mm)
+        # Kerf is the saw cut consumed BETWEEN pieces (and between a piece and
+        # the offcut beyond it). A piece edge that reaches the free rect's far
+        # edge needs no further cut there, so we clamp the reserved kerf to the
+        # rect: used = min(fit + kerf, rect_size). This keeps inter-piece kerf
+        # intact while never charging kerf against a sheet/offcut boundary, and
+        # guarantees used <= rect (so placements stay within the source).
+        used_w = int(min(fit_w + self.kerf_mm, int(rect["w"])))
+        used_h = int(min(fit_h + self.kerf_mm, int(rect["h"])))
         return {
             "rect_idx": rect_idx,
             "x": int(rect["x"]),

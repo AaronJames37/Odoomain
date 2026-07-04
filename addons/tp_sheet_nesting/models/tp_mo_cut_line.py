@@ -9,6 +9,7 @@ class TpMoCutLine(models.Model):
 
     mo_id = fields.Many2one("mrp.production", required=True, ondelete="cascade", index=True)
     source_so_line_id = fields.Many2one("sale.order.line", ondelete="set null")
+    source_web_cut_part_id = fields.Many2one("tp.web.cut.part", ondelete="set null", index=True)
     width_mm = fields.Integer(required=True)
     height_mm = fields.Integer(required=True)
     quantity = fields.Integer(required=True, default=1)

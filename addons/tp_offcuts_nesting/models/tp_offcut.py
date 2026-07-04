@@ -17,6 +17,16 @@ class TpOffcut(models.Model):
     _rec_name = "name"
 
     name = fields.Char(required=True, copy=False, default="New")
+    # Simple sequential, human-friendly ID (1, 2, 3, ...). Assigned on create
+    # from an ir.sequence so it's gap-free and stable, independent of the
+    # database id. Shown to operators and quoted by the nesting engine.
+    offcut_ref = fields.Integer(
+        string="Offcut ID",
+        copy=False,
+        readonly=True,
+        index=True,
+        aggregator=None,  # it's an identifier, not a quantity — never sum it in group headers
+    )
     active = fields.Boolean(default=True)
     lot_id = fields.Many2one("stock.lot", ondelete="cascade", index=True)
     company_id = fields.Many2one(
@@ -190,45 +200,39 @@ class TpOffcut(models.Model):
         return f"{max_serial + 1:03d}"
 
     @api.model
-    def _tp_generate_offcut_structured_name(self, *, product, width_mm, height_mm):
-        colour_map = {
-            "clear": "CLR",
-            "black": "BLK",
-            "white": "WHT",
-            "red": "RED",
-            "blue": "BLU",
-            "green": "GRN",
-            "grey": "GRY",
-            "gray": "GRY",
-            "bronze": "BRZ",
-            "opal": "OPL",
-            "frost": "FRS",
-            "smoke": "SMK",
-        }
-        material_map = {
-            "acrylic": "ACR",
-            "polycarbonate": "POL",
-            "poly carb": "POL",
-            "petg": "PTG",
-            "pvc": "PVC",
-            "abs": "ABS",
-            "hdpe": "HDP",
-            "mdpe": "MDP",
-        }
-        colour_source = product.tp_colour or product.display_name
-        material_source = product.tp_material_type or product.display_name
-        colour_code = self._tp_code_from_value(colour_source, colour_map, fallback="CLR")
-        material_code = self._tp_code_from_value(material_source, material_map, fallback="MAT")
-        thickness_code = self._tp_format_thickness_code(self._tp_extract_thickness_mm(product))
-        serial_code = self._tp_next_offcut_serial(
-            product=product,
-            colour_code=colour_code,
-            material_code=material_code,
-            thickness_code=thickness_code,
+    def _tp_offcut_name_base(self, product):
+        """Material/colour/code/thickness prefix for the offcut name, taken from
+        the product SKU (default_code) with the trailing size suffix removed —
+        e.g. 'ACR-CLR-000-2MM-CTS' or 'ACR-CLR-000-2MM-2440X1220' -> 'ACR-CLR-000-2MM'."""
+        code = (product.default_code or "").strip()
+        if code and "-" in code:
+            head, tail = code.rsplit("-", 1)
+            # Drop the cut-to-size / sheet-size suffix only.
+            if tail.upper() == "CTS" or re.match(r"^\d+\s*[xX]\s*\d+$", tail):
+                return head
+            return code
+        if code:
+            return code
+        # Fallback when the product has no SKU: compact material-colour-thickness.
+        colour_code = self._tp_code_from_value(
+            product.tp_colour or product.display_name,
+            {"clear": "CLR", "black": "BLK", "white": "WHT", "grey": "GRY", "gray": "GRY"},
+            fallback="CLR",
         )
+        material_code = self._tp_code_from_value(
+            product.tp_material_type or product.display_name,
+            {"acrylic": "ACR", "polycarbonate": "POL", "petg": "PTG", "pvc": "PVC"},
+            fallback="MAT",
+        )
+        thickness = self._tp_format_thickness_code(self._tp_extract_thickness_mm(product))
+        return "%s-%s-000-%sMM" % (material_code, colour_code, int(round(float(thickness or 0))))
+
+    @api.model
+    def _tp_generate_offcut_structured_name(self, *, product, width_mm, height_mm):
+        base = self._tp_offcut_name_base(product)
         length_code = int(height_mm or 0)
         width_code = int(width_mm or 0)
-        return f"{colour_code}-{material_code}-{serial_code}-{thickness_code}-{length_code}-{width_code}"
+        return "[%s-%s-%s]" % (base, length_code, width_code)
 
     @api.depends("width_mm", "height_mm")
     def _compute_area_mm2(self):
@@ -399,6 +403,8 @@ class TpOffcut(models.Model):
                 height = vals.get("height_mm") or 0
                 vals["remaining_area_mm2"] = float(width * height)
         records = super().create(vals_list)
+        for record in records.filtered(lambda r: not r.offcut_ref):
+            record.offcut_ref = self.env["ir.sequence"].next_by_code("tp.offcut.ref") or record.id
         for record in records.filtered(lambda r: not r.bin_location_id):
             record._assign_bin_location_from_rules()
         return records
@@ -460,11 +466,42 @@ class TpOffcut(models.Model):
             if duplicate:
                 raise ValidationError("An offcut already exists for this lot.")
 
+    def _tp_stock_count_groups(self):
+        """Available offcuts grouped by thickness for the stock-count report.
+        Returns a list of {'thickness', 'lines': [...], 'count'} ordered by
+        thickness ascending, each line holding only ID / width / height /
+        thickness."""
+        offcuts = self.search(
+            [("active", "=", True), ("state", "not in", ("sold", "inactive"))],
+            order="tp_thickness_mm asc, offcut_ref asc",
+        )
+        groups = {}
+        for o in offcuts:
+            t = float(o.tp_thickness_mm or 0.0)
+            g = groups.setdefault(t, {"thickness": t, "lines": []})
+            g["lines"].append({
+                "ref": o.offcut_ref,
+                "width_mm": int(o.width_mm or 0),
+                "height_mm": int(o.height_mm or 0),
+                "thickness_mm": t,
+                "bin": o.bin_location_id.name or "—",
+            })
+        out = []
+        for t in sorted(groups):
+            g = groups[t]
+            g["count"] = len(g["lines"])
+            out.append(g)
+        return out
+
     def _assign_bin_location_from_rules(self):
         rules = self.env["tp.offcut.bin.rule"].search([("active", "=", True)], order="sequence asc")
         for record in self:
             for rule in rules:
-                if record.width_mm >= rule.min_width_mm and record.height_mm >= rule.min_height_mm:
+                if rule._matches_offcut(
+                    width_mm=record.width_mm,
+                    height_mm=record.height_mm,
+                    thickness_mm=record.tp_thickness_mm,
+                ):
                     record.bin_location_id = rule.bin_location_id
                     break
 
@@ -693,6 +730,17 @@ class TpOffcut(models.Model):
             }
         )
         return child
+
+    def action_save_and_new(self):
+        # Object button auto-saves the current offcut, then we open a blank form.
+        return {
+            "type": "ir.actions.act_window",
+            "res_model": "tp.offcut",
+            "view_mode": "form",
+            "views": [(False, "form")],
+            "target": "current",
+            "context": dict(self.env.context),
+        }
 
     def action_set_available(self):
         vals = {"state": "available"}

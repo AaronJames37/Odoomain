@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="tp_sheet_nesting_run.LiveNestingApp">
+        <div class="o_tp_nesting_live_app">
+            <t t-if="state.loading">
+                <div class="tp_nesting_loading">Loading nesting workspace...</div>
+            </t>
+            <t t-else="">
+                <aside class="tp_nesting_sidebar">
+                    <div class="tp_nesting_brand">
+                        <h1>Live Nesting</h1>
+                        <div class="tp_nesting_brand_tools">
+                            <span t-att-class="'tp_nesting_state_badge is-' + state.session.state" t-esc="state.session.state"/>
+                            <button type="button" class="tp_nesting_icon_btn" title="Settings" t-on-click="toggleSettings" t-att-disabled="state.session.state === 'running'">
+                                <i class="fa fa-cog"/>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="tp_nesting_settings" t-if="state.showSettings">
+                        <label>
+                            <span>Kerf mm</span>
+                            <input type="number" min="0" step="1" t-att-value="state.session.kerfMm" t-on-input="onKerfInput" t-att-disabled="state.session.state === 'running'"/>
+                        </label>
+                    </div>
+
+                    <div class="tp_nesting_progress">
+                        <div>
+                            <strong t-esc="Math.round(state.session.progressPct || 0) + '%'"/>
+                            <span t-esc="state.session.message"/>
+                        </div>
+                        <div class="tp_nesting_progress_track">
+                            <div class="tp_nesting_progress_bar" t-att-style="'width:' + Math.min(100, Math.max(0, state.session.progressPct || 0)) + '%'"/>
+                        </div>
+                    </div>
+
+                    <section class="tp_nesting_csv">
+                        <div class="tp_nesting_section_title tp_nesting_compact_title tp_nesting_panel_title">
+                            <span><i class="fa fa-columns"/> Panels</span>
+                            <label class="tp_nesting_import_icon" title="Import CSV">
+                                <i class="fa fa-upload"/>
+                                <input type="file" accept=".csv,text/csv" t-on-change="onCsvFile" t-att-disabled="state.session.state === 'running'"/>
+                            </label>
+                        </div>
+                        <label>
+                            <span>Material</span>
+                            <select t-model="state.csvOnlySourceId" t-att-disabled="state.session.state === 'running'">
+                                <option value="">Choose material</option>
+                                <t t-foreach="state.session.allSources" t-as="source" t-key="source.id">
+                                    <option t-att-value="source.id" t-esc="source.name"/>
+                                </t>
+                            </select>
+                        </label>
+                        <div class="tp_nesting_manual_summary">
+                            <span t-esc="manualPanelQuantity + ' manual panels'"/>
+                            <span t-if="state.csvFilename" t-esc="state.csvFilename"/>
+                        </div>
+                        <div class="tp_nesting_panel_grid">
+                            <div class="tp_nesting_panel_row is-header">
+                                <span>Length</span>
+                                <span>Width</span>
+                                <span>Qty</span>
+                                <span>Label</span>
+                                <span class="tp_nesting_panel_actions_header"/>
+                            </div>
+                            <div class="tp_nesting_panel_body">
+                                <t t-foreach="manualGridRows" t-as="row" t-key="row.key">
+                                    <div t-att-class="'tp_nesting_panel_row ' + (row.isDraft ? 'is-draft' : 'is-existing') + (!row.isDraft &amp;&amp; row.active === false ? ' is-inactive' : '')">
+                                        <input type="number" min="1" step="1" placeholder="" t-att-value="row.lengthMm || ''" t-att-disabled="!row.isDraft || state.session.state === 'running'" t-on-input="(ev) => this.updateManualDraft(row, 'lengthMm', ev.target.value)"/>
+                                        <input type="number" min="1" step="1" placeholder="" t-att-value="row.widthMm || ''" t-att-disabled="!row.isDraft || state.session.state === 'running'" t-on-input="(ev) => this.updateManualDraft(row, 'widthMm', ev.target.value)"/>
+                                        <input type="number" min="1" step="1" placeholder="" t-att-value="row.quantity || ''" t-att-disabled="!row.isDraft || state.session.state === 'running'" t-on-input="(ev) => this.updateManualDraft(row, 'quantity', ev.target.value)"/>
+                                        <input type="text" placeholder="" t-att-value="row.label || ''" t-att-disabled="!row.isDraft || state.session.state === 'running'" t-on-input="(ev) => this.updateManualDraft(row, 'label', ev.target.value)"/>
+                                        <span class="tp_nesting_panel_actions">
+                                            <button t-if="row.isDraft" type="button" class="tp_nesting_grid_action is-save" title="Add panel row" t-on-click="() => this.addManualDraftRow(row)" t-att-disabled="!canSaveManualDraft(row)">
+                                                <i class="fa fa-check"/>
+                                            </button>
+                                            <button t-if="row.isDraft" type="button" class="tp_nesting_grid_action is-clear" title="Clear row" t-on-click="() => this.clearManualDraftRow(row)" t-att-disabled="state.session.state === 'running'">
+                                                <i class="fa fa-times"/>
+                                            </button>
+                                            <button t-if="!row.isDraft" type="button" t-att-class="'tp_nesting_grid_action is-save ' + (row.active === false ? 'is-muted' : '')" t-att-title="row.active === false ? 'Activate panel' : 'Deactivate panel'" t-on-click="() => this.toggleManualPanel(row)" t-att-disabled="state.session.state === 'running'">
+                                                <i class="fa fa-check"/>
+                                            </button>
+                                            <button t-if="!row.isDraft" type="button" class="tp_nesting_grid_action is-clear" title="Delete panel row" t-on-click="() => this.deleteManualPanel(row)" t-att-disabled="state.session.state === 'running'">
+                                                <i class="fa fa-times"/>
+                                            </button>
+                                        </span>
+                                    </div>
+                                </t>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="tp_nesting_batches">
+                        <div class="tp_nesting_section_title">
+                            <button type="button" class="tp_nesting_queue_toggle" t-on-click="toggleBatches">
+                                <i t-att-class="state.showBatches ? 'fa fa-chevron-down' : 'fa fa-chevron-right'"/>
+                                <span>Webstore</span>
+                                <strong t-esc="selectedOrderBatchCount + '/' + activeOrderBatches.length"/>
+                            </button>
+                            <button class="tp_nesting_icon_btn" title="Refresh batches" t-on-click="refreshBatches" t-att-disabled="state.session.state === 'running'">
+                                <i class="fa fa-refresh"/>
+                            </button>
+                        </div>
+                        <t t-if="!activeOrderBatches.length">
+                            <div class="tp_nesting_empty">No webstore batches ready.</div>
+                        </t>
+                        <t t-if="state.showBatches">
+                            <div class="tp_nesting_batch_list">
+                                <t t-foreach="activeOrderBatches" t-as="batch" t-key="batch.id">
+                                    <button type="button" t-att-class="batchClass(batch)" t-on-click="() => this.selectBatch(batch)">
+                                        <span class="tp_nesting_batch_top">
+                                            <input type="checkbox" t-att-checked="batch.selected" t-on-click.stop="" t-on-change="(ev) => this.toggleBatch(batch, ev)" t-att-disabled="state.session.state === 'running'"/>
+                                            <strong t-esc="batch.label"/>
+                                        </span>
+                                        <span class="tp_nesting_batch_meta">
+                                            <span t-esc="batch.panelQuantity + ' panels'"/>
+                                            <span t-if="batch.bestResult" t-esc="batch.bestResult.sheetCount + ' sheets'"/>
+                                            <span t-if="batch.bestResult" t-esc="batch.bestResult.sawCuts + ' cuts'"/>
+                                        </span>
+                                        <span class="tp_nesting_batch_message" t-esc="batch.lastError || batch.message || batch.warning || batch.sourceProductName"/>
+                                    </button>
+                                </t>
+                            </div>
+                        </t>
+                    </section>
+
+                    <div class="tp_nesting_actions">
+                        <button class="btn btn-primary" t-on-click="startPreview" t-att-disabled="!canPreview">
+                            <i class="fa fa-play"/> Preview
+                        </button>
+                        <button class="btn btn-secondary" t-on-click="cancelPreview" t-att-disabled="state.session.state !== 'running'">
+                            <i class="fa fa-stop"/> Stop
+                        </button>
+                        <button class="btn btn-success" t-on-click="commitBest" t-att-disabled="!canCommit">
+                            <i class="fa fa-check"/> Run Current Best
+                        </button>
+                    </div>
+                </aside>
+
+                <main class="tp_nesting_workspace">
+                    <header class="tp_nesting_workspace_header">
+                        <div class="tp_nesting_workspace_title">
+                            <h2 t-esc="selectedBatch ? selectedBatch.label : 'No batch selected'"/>
+                            <div class="tp_nesting_workspace_subline" t-if="selectedBatch">
+                                <span t-esc="selectedBatch.sourceProductName"/>
+                                <span t-if="selectedBatch.sourcePoolSummary" t-esc="selectedBatch.sourcePoolSummary"/>
+                            </div>
+                        </div>
+                        <t t-if="selectedBatch">
+                            <select t-att-value="selectedBatch.sourceProductId || ''" t-on-change="(ev) => this.changeSource(selectedBatch, ev)" t-att-disabled="state.session.state === 'running'">
+                                <option value="">Choose material</option>
+                                <t t-foreach="selectedBatch.candidateSources" t-as="source" t-key="source.id">
+                                    <option t-att-value="source.id" t-esc="source.name"/>
+                                </t>
+                            </select>
+                        </t>
+                    </header>
+
+                    <section class="tp_nesting_metrics" t-if="selectedBatch">
+                        <div>
+                            <span>Panels</span>
+                            <strong t-esc="selectedBatch.panelQuantity"/>
+                        </div>
+                        <div>
+                            <span>Sheets</span>
+                            <strong t-esc="selectedBatch.bestResult ? selectedBatch.bestResult.sheetCount : '-'"/>
+                        </div>
+                        <div>
+                            <span>Saw Cuts</span>
+                            <strong t-esc="selectedBatch.bestResult ? selectedBatch.bestResult.sawCuts : '-'"/>
+                        </div>
+                        <div>
+                            <span>Utilisation</span>
+                            <strong t-esc="selectedBatch.bestResult ? selectedBatch.bestResult.utilizationPct.toFixed(2) + '%' : '-'"/>
+                        </div>
+                        <div>
+                            <span>Waste</span>
+                            <strong t-esc="selectedBatch.bestResult ? selectedBatch.bestResult.wasteM2.toFixed(4) + ' m²' : '-'"/>
+                        </div>
+                    </section>
+
+                    <section class="tp_nesting_preview_stage">
+                        <t t-if="selectedBatch &amp;&amp; selectedBatch.bestResult">
+                            <div class="tp_nesting_svg_wrap" t-out="previewHtml"/>
+                        </t>
+                        <t t-elif="selectedBatch">
+                            <div class="tp_nesting_empty_preview">
+                                <i class="fa fa-object-group"/>
+                                <span t-esc="selectedBatch.state === 'running' ? 'Finding first suitable layout...' : 'Click Preview to generate a live layout.'"/>
+                            </div>
+                        </t>
+                        <t t-else="">
+                            <div class="tp_nesting_empty_preview">
+                                <i class="fa fa-list"/>
+                                <span>Select a batch to inspect.</span>
+                            </div>
+                        </t>
+                    </section>
+                </main>
+            </t>
+        </div>
+    </t>
+</templates>

@@ -14,6 +14,8 @@ class TpNestingAllocation(models.Model):
     source_offcut_id = fields.Many2one("tp.offcut")
     source_sheet_format_id = fields.Many2one("tp.sheet.format")
     source_lot_id = fields.Many2one("stock.lot", ondelete="set null")
+    source_so_line_id = fields.Many2one("sale.order.line", ondelete="set null", index=True)
+    web_cut_part_id = fields.Many2one("tp.web.cut.part", ondelete="set null", index=True)
     cut_width_mm = fields.Integer(required=True)
     cut_height_mm = fields.Integer(required=True)
     cut_quantity = fields.Integer(default=1, required=True)

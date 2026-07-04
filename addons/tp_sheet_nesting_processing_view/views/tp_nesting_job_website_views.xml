@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="tp_sheet_nesting.action_tp_nesting_job" model="ir.actions.act_window">
+        <field name="context">{"search_default_filter_lifecycle_active": 1}</field>
+    </record>
+
+    <record id="action_pull_website_fulfillment_jobs" model="ir.actions.server">
+        <field name="name">Pull Website Fulfillment Jobs</field>
+        <field name="model_id" ref="tp_sheet_nesting.model_tp_nesting_job"/>
+        <field name="binding_model_id" ref="tp_sheet_nesting.model_tp_nesting_job"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_pull_website_fulfillment_jobs()</field>
+    </record>
+
+    <menuitem id="menu_pull_website_fulfillment_jobs"
+              name="Pull Website Jobs"
+              parent="tp_sheet_nesting.menu_tp_sheet_nesting_root"
+              action="action_pull_website_fulfillment_jobs"
+              sequence="44"/>
+
+    <record id="view_tp_nesting_job_tree_website_fulfillment" model="ir.ui.view">
+        <field name="name">tp.nesting.job.list.website.fulfillment</field>
+        <field name="model">tp.nesting.job</field>
+        <field name="inherit_id" ref="tp_sheet_nesting.view_tp_nesting_job_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//list" position="inside">
+                <header>
+                    <button name="action_pull_website_fulfillment_jobs"
+                            type="object"
+                            string="Pull Website Jobs"
+                            class="btn-primary"
+                            display="always"/>
+                </header>
+            </xpath>
+            <xpath expr="//field[@name='sale_order_id']" position="after">
+                <field name="lifecycle_state" optional="show" widget="badge"
+                       decoration-success="lifecycle_state == 'active'"
+                       decoration-muted="lifecycle_state == 'closed'"
+                       decoration-danger="lifecycle_state == 'cancelled'"/>
+                <field name="website_fulfillment_status" optional="show"/>
+                <field name="website_panel_count" optional="show"/>
+                <field name="website_panel_quantity" optional="show"/>
+                <field name="website_cnc_panel_count" optional="show"/>
+                <field name="website_missing_panel_manifest" optional="show"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_tp_nesting_job_form_website_fulfillment" model="ir.ui.view">
+        <field name="name">tp.nesting.job.form.website.fulfillment</field>
+        <field name="model">tp.nesting.job</field>
+        <field name="inherit_id" ref="tp_sheet_nesting.view_tp_nesting_job_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form/header" position="inside">
+                <button name="action_view_website_panels"
+                        type="object"
+                        string="Open Website Panels"
+                        class="btn-secondary"
+                        invisible="website_panel_count == 0"/>
+            </xpath>
+            <xpath expr="//field[@name='demand_product_id']" position="after">
+                <field name="lifecycle_state" widget="badge"
+                       decoration-success="lifecycle_state == 'active'"
+                       decoration-muted="lifecycle_state == 'closed'"
+                       decoration-danger="lifecycle_state == 'cancelled'"/>
+                <field name="website_fulfillment_status"/>
+                <field name="website_panel_count"/>
+                <field name="website_panel_quantity"/>
+                <field name="website_cnc_panel_count"/>
+                <field name="website_missing_panel_manifest"/>
+            </xpath>
+            <xpath expr="//sheet/group[field[@name='allocation_ids']]" position="after">
+                <notebook>
+                    <page string="Website Panels">
+                        <field name="website_panel_ids" readonly="1">
+                            <list create="false" delete="false">
+                                <field name="sale_order_line_id"/>
+                                <field name="line_index" optional="hide"/>
+                                <field name="panel_index"/>
+                                <field name="instance_index"/>
+                                <field name="sku"/>
+                                <field name="label"/>
+                                <field name="tp_material_type" string="Material"/>
+                                <field name="tp_thickness_mm" string="Thickness (mm)"/>
+                                <field name="tp_colour" string="Colour"/>
+                                <field name="tp_finish" string="Finish" optional="hide"/>
+                                <field name="width_mm"/>
+                                <field name="height_mm"/>
+                                <field name="quantity"/>
+                                <field name="shape"/>
+                                <field name="cnc_required"/>
+                                <field name="cnc_operation_summary"/>
+                                <field name="radii" optional="hide"/>
+                                <field name="holes" optional="hide"/>
+                                <field name="cut_outs" optional="hide"/>
+                                <field name="custom_shape" optional="hide"/>
+                                <field name="geometry_payload" optional="hide"/>
+                                <field name="source_payload" optional="hide"/>
+                            </list>
+                        </field>
+                    </page>
+                </notebook>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_tp_nesting_job_search_website_fulfillment" model="ir.ui.view">
+        <field name="name">tp.nesting.job.search.website.fulfillment</field>
+        <field name="model">tp.nesting.job</field>
+        <field name="inherit_id" ref="tp_sheet_nesting.view_tp_nesting_job_search"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <field name="website_fulfillment_status"/>
+                <field name="lifecycle_state"/>
+                <filter name="filter_lifecycle_active"
+                        string="Active"
+                        domain="[('lifecycle_state', '=', 'active')]"/>
+                <filter name="filter_lifecycle_closed"
+                        string="Closed"
+                        domain="[('lifecycle_state', '=', 'closed')]"/>
+                <filter name="filter_lifecycle_cancelled"
+                        string="Cancelled"
+                        domain="[('lifecycle_state', '=', 'cancelled')]"/>
+                <separator/>
+                <filter name="filter_website_processing"
+                        string="Website Processing"
+                        domain="[('website_fulfillment_status', '=', 'processing')]"/>
+                <filter name="filter_website_cutting"
+                        string="Website Cutting"
+                        domain="[('website_fulfillment_status', '=', 'cutting')]"/>
+                <filter name="filter_missing_panel_manifest"
+                        string="Missing Panel Manifest"
+                        domain="[('website_missing_panel_manifest', '=', True)]"/>
+            </xpath>
+            <xpath expr="//group" position="inside">
+                <filter string="By Website Status"
+                        name="grp_website_fulfillment_status"
+                        context="{'group_by': 'website_fulfillment_status'}"/>
+                <filter string="By Job State"
+                        name="grp_lifecycle_state"
+                        context="{'group_by': 'lifecycle_state'}"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

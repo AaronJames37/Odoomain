@@ -211,7 +211,15 @@ class MrpProduction(models.Model):
             entries = []
             for cut_line in self.tp_cut_line_ids:
                 entries.extend(
-                    [{"width_mm": cut_line.width_mm, "height_mm": cut_line.height_mm}] * int(cut_line.quantity)
+                    [
+                        {
+                            "width_mm": cut_line.width_mm,
+                            "height_mm": cut_line.height_mm,
+                            "source_so_line_id": cut_line.source_so_line_id.id,
+                            "source_web_cut_part_id": cut_line.source_web_cut_part_id.id,
+                        }
+                    ]
+                    * int(cut_line.quantity)
                 )
             if entries:
                 return entries
@@ -450,7 +458,13 @@ class MrpProduction(models.Model):
         if offcuts:
             return offcuts
 
-        # Fallback: explicit mappings can still seed candidates when material data is sparse.
+        # Fallback: explicit mappings can still seed candidates when material data is
+        # sparse. This requires a concrete MO (the mapping helpers call ensure_one),
+        # so skip it when invoked without one (e.g. from the manual/preview wizards,
+        # which pass an empty mrp.production recordset) — the material search above
+        # is the right behaviour there.
+        if len(self) != 1:
+            return self.env["tp.offcut"].browse()
         mappings, _mapped_product_ids, mapped_lot_ids, mapped_product_only_ids = self._tp_get_source_mapping(product)
         if mappings:
             mapped = self.env["tp.offcut"].search(

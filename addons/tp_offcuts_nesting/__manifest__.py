@@ -6,6 +6,7 @@
     "license": "LGPL-3",
     "depends": ["base", "mrp", "stock", "account"],
     "data": [
+        "data/tp_offcut_sequence.xml",
         "data/ir_cron_data.xml",
         "data/tp_offcut_dashboard_data.xml",
         "security/ir.model.access.csv",
@@ -20,7 +21,8 @@
         "views/tp_offcuts_placeholder_views.xml",
         "views/tp_offcuts_settings_actions.xml",
         "views/tp_offcuts_menus.xml",
-        "views/tp_offcuts_menu_icons.xml"
+        "views/tp_offcuts_menu_icons.xml",
+        "report/tp_offcut_stock_count_report.xml"
     ],
     "assets": {
         "web.assets_backend": [
