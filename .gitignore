@@ -15,6 +15,9 @@ node_modules/
 # Licensed Odoo Enterprise source — copied from the server, never committed.
 enterprise-addons/
 
+# Bundle pulled from the VPS: db dump, filestore and licensed enterprise source.
+bundle/
+
 # Local database dumps / filestore snapshots
 *.dump
 *.bundle

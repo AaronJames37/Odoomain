@@ -63,20 +63,32 @@ SQL
 systemctl restart postgresql
 
 # ---------------------------------------------------------------- odoo
+# NOTE (2026-07-20): https://nightly.odoo.com/enterprise/19.0 now returns 404 —
+# verified from three separate hosts including the old production box, so it is
+# an upstream change, not a credentials or firewall problem. Enterprise cannot
+# be apt-installed from that URL any more.
+#
+# Instead we install a .deb repacked from the OLD box's already-installed tree
+# (dpkg-repack), which pins the exact build running in production
+# (19.0+e.20260323) rather than whatever a fresh install would pull.
+#
+#   ON OLD BOX:  apt-get install -y dpkg-repack
+#                cd /root/odoo-repack && dpkg-repack odoo
+#   THEN:        scp the .deb to this box as /tmp/odoo-enterprise.deb
+#
+# Set ODOO_DEB to the local path of that file.
 log "Odoo 19 Enterprise"
-if ! dpkg -l odoo >/dev/null 2>&1; then
-  wget -qO- https://nightly.odoo.com/odoo.key | gpg --dearmor \
-      > /etc/apt/trusted.gpg.d/odoo-archive-keyring.gpg
-  cat > /etc/apt/sources.list.d/odoo.sources <<'EOF'
-Types: deb
-URIs: https://nightly.odoo.com/enterprise/19.0
-Suites: ./
-Signed-By: /etc/apt/trusted.gpg.d/odoo-archive-keyring.gpg
-EOF
-  apt-get update -qq
-  apt-get install -y odoo
-else
+ODOO_DEB="${ODOO_DEB:-/tmp/odoo-enterprise.deb}"
+if dpkg -s odoo >/dev/null 2>&1; then
   echo "    odoo already installed ($(dpkg -s odoo | awk '/^Version/{print $2}'))"
+elif [ -f "$ODOO_DEB" ]; then
+  echo "    installing from $ODOO_DEB"
+  # apt-get install resolves the ~48 python3-* deps from the Ubuntu archive.
+  DEBIAN_FRONTEND=noninteractive apt-get install -y "$ODOO_DEB"
+else
+  echo "    !! no Odoo package found at $ODOO_DEB" >&2
+  echo "    !! repack it from the old box first (see comment above), then re-run." >&2
+  exit 1
 fi
 
 # ---------------------------------------------------------------- odoo.conf
@@ -89,7 +101,9 @@ db_host = localhost
 db_port = 5432
 db_user = odoo
 db_password = ${DB_PASSWORD}
-addons_path = /usr/lib/python3/dist-packages/odoo/addons,/opt/odoo/addons
+; Custom addons FIRST, matching the local docker stack, so a custom module
+; that shadows a stock one resolves the same way in both places.
+addons_path = /opt/odoo/addons,/usr/lib/python3/dist-packages/odoo/addons
 proxy_mode = True
 workers = 2
 max_cron_threads = 1

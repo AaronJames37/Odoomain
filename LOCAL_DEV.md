@@ -115,6 +115,61 @@ A plain restart (no `-u`) is enough for pure Python logic changes.
 
 ## Gotchas
 
+- **The "installed modules only" copy misses hidden dependencies.** The step-3
+  one-liner copies modules whose `state='installed'`. `ai_auto_install` is
+  installed and imports `odoo.addons.ai`, but `ai` and `ai_fields` are
+  *uninstalled* — so they get skipped and Odoo dies at boot with
+  `ModuleNotFoundError: No module named 'odoo.addons.ai'` and a 500 on every
+  page. Copy the dependencies too:
+
+  ```bash
+  ssh root@<vps-ip> 'tar czf - -C /usr/lib/python3/dist-packages/odoo/addons ai ai_fields' \
+    | tar xzf - -C enterprise-addons
+  ```
+
+- **Windows/Git Bash mangles container paths.** MSYS rewrites `/var/lib/odoo`
+  into `C:\var\lib\odoo` before docker sees it (`mkdir: cannot create directory
+  'C:'`). `restore-local.sh` now sets `MSYS_NO_PATHCONV=1` itself; if you run
+  `docker exec` with absolute container paths by hand, prefix it the same way.
+
+- **The filestore goes in `data_dir`, which is not `/var/lib/odoo`.** In the
+  `odoo:19` image `data_dir` is `/var/lib/odoo/.local/share/Odoo`, so the
+  filestore belongs at `/var/lib/odoo/.local/share/Odoo/filestore/<db>`. Put it
+  at `/var/lib/odoo/filestore/<db>` and Odoo starts fine, serves a 200 on
+  `/web/login`, and then 500s on the asset bundles — the login form renders
+  with **no email/password fields**. Check with:
+
+  ```bash
+  curl -s -o /dev/null -w '%{http_code}\n' \
+    "http://localhost:8069$(curl -s http://localhost:8069/web/login \
+    | grep -oE '/web/assets/[^\"]*minimal[^\"]*' | head -1)"
+  ```
+
+- **Production's compiled asset bundles don't survive the move.** They are
+  `ir.ui.view` attachments pointing at filestore entries the dump doesn't
+  include. Delete them and let Odoo rebuild (`restore-local.sh` now does this):
+
+  ```bash
+  docker compose -f docker/docker-compose.yml exec -T db psql -U odoo -d cutmyplastic \
+    -c "DELETE FROM ir_attachment WHERE res_model='ir.ui.view' AND (name LIKE '%.assets_%' OR url LIKE '/web/assets/%');"
+  ```
+  Then restart Odoo and hard-refresh the browser (Ctrl+Shift+R) — it will have
+  cached the 500s.
+
+- **`mcp_server` recreates its cron on every registry load.** "MCP Log Cleanup"
+  comes back (with a new id) after each restart. It is local log cleanup with no
+  outbound effect, but it means the cron table is never permanently empty.
+
+- **Neutralisation is not one-and-done.** Loading the registry can re-enable a
+  cron through a module init hook (`MCP Log Cleanup` does this). After the first
+  successful boot, re-check:
+
+  ```bash
+  docker compose -f docker/docker-compose.yml exec -T db \
+    psql -U odoo -d cutmyplastic -c "UPDATE ir_cron SET active=false WHERE active;"
+  ```
+
+
 - **`/etc/odoo/odoo.conf` must stay `odoo:odoo`.** Some editors rewrite it as
   root, and Odoo then fails to start with *"config file ... doesn't exist or is
   not readable"*. Fix: `chown odoo:odoo /etc/odoo/odoo.conf`.
