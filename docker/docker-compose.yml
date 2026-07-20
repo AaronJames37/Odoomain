@@ -1,0 +1,53 @@
+# Local development stack for Odoo 19 Enterprise.
+#
+# Mirrors production: Odoo 19, PostgreSQL 16.
+# Run from the repo root:  docker compose -f docker/docker-compose.yml up -d
+#
+# Enterprise addons are NOT in this repo (licensed source). Copy them from the
+# server into ./enterprise-addons/ first — see LOCAL_DEV.md step 3.
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: odoo
+      POSTGRES_PASSWORD: odoo_password   # local only; prod uses its own
+      POSTGRES_DB: postgres
+      # Keeps restores fast on a dev box.
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    ports:
+      # Exposed so you can psql / point tooling at it directly.
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U odoo"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  odoo:
+    image: odoo:19
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8069:8069"     # web
+      - "8072:8072"     # longpolling / websocket
+    volumes:
+      # Your custom addons — the repo itself, live-mounted for editing.
+      - ../addons:/mnt/custom-addons:ro
+      # Enterprise addons copied from the server (gitignored, see LOCAL_DEV.md).
+      - ../enterprise-addons:/mnt/enterprise-addons:ro
+      # Filestore (attachments) restored from the production dump.
+      - odoo-filestore:/var/lib/odoo
+      - ./odoo.conf:/etc/odoo/odoo.conf:ro
+    environment:
+      HOST: db
+      USER: odoo
+      PASSWORD: odoo_password
+    command: odoo -c /etc/odoo/odoo.conf
+
+volumes:
+  db-data:
+  odoo-filestore:

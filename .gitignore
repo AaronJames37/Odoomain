@@ -8,8 +8,17 @@ __pycache__/
 postgres_data/
 odoo_data/
 config/
-docker-compose.yml
+# Only ignore a stray compose file at the repo root; docker/ is tracked.
+/docker-compose.yml
 node_modules/
+
+# Licensed Odoo Enterprise source — copied from the server, never committed.
+enterprise-addons/
+
+# Local database dumps / filestore snapshots
+*.dump
+*.bundle
+filestore-*.tar.gz
 .pytest_cache/
 *.egg-info/
 dist/
