@@ -1,10 +1,16 @@
 #!/usr/bin/env bash
 # Deploy custom addons to the Odoo server.
 #
-# Run this ON THE SERVER (or via ssh) after pushing from local:
-#   ssh root@<vps> 'bash /opt/odoo/scripts/deploy.sh'
+# Run this ON THE SERVER (or via ssh) after pushing from local.
 #
-# Usage:
+# Production moved to OVHcloud on 2026-07-20. That box has no root login —
+# log in as 'ubuntu' and sudo. The old DigitalOcean host (170.64.227.145)
+# is retained only as rollback and must NOT be deployed to.
+#
+#   ssh -i ~/.ssh/windows_key ubuntu@51.161.134.72 \
+#       'sudo bash /opt/odoo/scripts/deploy.sh'
+#
+# Usage (all need root, so run under sudo):
 #   deploy.sh                     pull + restart
 #   deploy.sh -u tp_sheet_nesting pull + restart + upgrade that module
 #   deploy.sh -u all              pull + restart + upgrade every custom module
