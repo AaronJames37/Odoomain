@@ -146,6 +146,11 @@
         <field name="target">current</field>
     </record>
 
+    <menuitem id="tp_sheet_nesting.menu_tp_sheet_nesting_root"
+              name="Sheet Nesting"
+              action="action_tp_nesting_live_app"
+              sequence="20"/>
+
     <record id="action_tp_nesting_run_wizard_server" model="ir.actions.server">
         <field name="name">New Nesting Runs</field>
         <field name="model_id" ref="tp_sheet_nesting.model_tp_nesting_run"/>

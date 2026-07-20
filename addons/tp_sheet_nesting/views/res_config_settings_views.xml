@@ -11,6 +11,11 @@
                         <setting id="tp_nesting_kerf_mm_setting" help="Tool kerf width added around each nested panel.">
                             <field name="tp_nesting_kerf_mm"/>
                         </setting>
+                        <setting id="tp_nesting_ignore_sheet_stock_setting"
+                                 string="Ignore Full Sheet Stock"
+                                 help="Off: nesting only considers in-stock full sheet SKUs plus compatible offcuts. On: allow all configured internal full sheet formats, regardless of stock. Offcut usage is unchanged.">
+                            <field name="tp_nesting_ignore_sheet_stock"/>
+                        </setting>
                         <setting id="tp_nesting_guillotine_seconds_setting" help="How long the CutList-grade guillotine (panel-saw) optimiser may search for the best layout. Longer = better utilisation on big jobs.">
                             <field name="tp_nesting_guillotine_seconds"/>
                         </setting>

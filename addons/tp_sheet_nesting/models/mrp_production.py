@@ -481,7 +481,9 @@ class MrpProduction(models.Model):
 
     def _tp_compatible_sheet_formats(self, product, material_identity):
         # Auto mode: include all active sheet formats that match material + thickness.
-        sheets = self.env["tp.sheet.format"].search([("active", "=", True)], order="area_mm2 asc")
+        SheetFormat = self.env["tp.sheet.format"]
+        sheets = SheetFormat.search(SheetFormat._tp_internal_nesting_domain(), order="area_mm2 asc")
+        sheets = sheets._tp_filter_in_stock_for_nesting()
         target_thickness = self._tp_target_thickness_mm(product)
         if self._tp_has_material_identity(material_identity):
             sheets = sheets.filtered(lambda s: self._tp_soft_material_compatible(s, material_identity))
@@ -493,7 +495,8 @@ class MrpProduction(models.Model):
         # Fallback: explicit mapping rows (if any).
         mappings, mapped_product_ids, _mapped_lot_ids, mapped_product_only_ids = self._tp_get_source_mapping(product)
         if mappings:
-            mapped = self.env["tp.sheet.format"].search([("active", "=", True)], order="area_mm2 asc").filtered(
+            mapped = SheetFormat.search(SheetFormat._tp_internal_nesting_domain(), order="area_mm2 asc")
+            mapped = mapped._tp_filter_in_stock_for_nesting().filtered(
                 lambda s: s.product_id.id in mapped_product_ids or s.product_id.id in mapped_product_only_ids
             )
             if target_thickness > 0:
@@ -514,6 +517,17 @@ class MrpProduction(models.Model):
             )
         # Candidate sheet SKUs come from configured dimensional products, not only on-hand quants.
         products = self.env["product.product"].search([("tp_sheet_width_mm", ">", 0), ("tp_sheet_height_mm", ">", 0)])
+        if not products:
+            return []
+        SheetFormat = self.env["tp.sheet.format"]
+        active_formats = SheetFormat.search([("active", "=", True)])
+        supplier_product_ids = set(
+            active_formats.filtered(lambda sheet: sheet.tp_availability == "supplier_quote").mapped("product_id").ids
+        )
+        internal_product_ids = set(
+            active_formats.filtered(lambda sheet: sheet.tp_availability == "stock").mapped("product_id").ids
+        )
+        products = products.filtered(lambda p: p.id not in supplier_product_ids or p.id in internal_product_ids)
         if not products:
             return []
         target_thickness = self._tp_target_thickness_mm(product)

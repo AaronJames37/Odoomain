@@ -121,6 +121,22 @@ class TpNestingPreviewSession(models.Model):
             self._touch(message=_("Batch updated."))
         return self._app_state()
 
+    def update_settings(self, vals):
+        self.ensure_one()
+        self._ensure_editable()
+        vals = vals or {}
+        writes = {}
+        if "kerf_mm" in vals:
+            writes["kerf_mm"] = max(0, int(vals.get("kerf_mm") or 0))
+        if writes:
+            self.write(writes)
+        if "ignore_sheet_stock" in vals:
+            self.env.company.sudo().write({
+                "tp_nesting_ignore_sheet_stock": bool(vals.get("ignore_sheet_stock")),
+            })
+        self._touch(message=_("Settings updated."))
+        return self._app_state()
+
     def import_csv(self, file_data, filename=False, target_batch_id=False, csv_only=False, source_product_id=False):
         self.ensure_one()
         self._ensure_editable()
@@ -485,6 +501,19 @@ class TpNestingPreviewSession(models.Model):
                 _("No preview result exists for:\n%s")
                 % "\n".join("  - " + batch.group_label for batch in missing)
             )
+        if self.state != "running":
+            incomplete = selected.filtered(lambda batch: batch.state != "done")
+            if incomplete:
+                raise UserError(
+                    _(
+                        "The preview is not complete enough to run yet:\n%s\n\n"
+                        "Run Preview again and let it finish successfully before committing."
+                    )
+                    % "\n".join("  - %s: %s" % (
+                        batch.group_label,
+                        batch.last_error or batch.message or batch.state,
+                    ) for batch in incomplete)
+                )
 
         runs = self.env["tp.nesting.run"].sudo()
         for batch in selected.sorted(lambda b: (b.sequence, b.id)):
@@ -499,15 +528,23 @@ class TpNestingPreviewSession(models.Model):
             }
         )
         self._publish()
-        return {
+        action = {
             "type": "ir.actions.act_window",
             "name": _("Created Nesting Runs"),
             "res_model": "tp.nesting.run",
             "view_mode": "list,form",
+            "views": [[False, "list"], [False, "form"]],
             "domain": [("id", "in", runs.ids)],
             "target": "current",
             "context": {"create": False},
         }
+        if len(runs) == 1:
+            action.update({
+                "view_mode": "form",
+                "views": [[False, "form"]],
+                "res_id": runs.id,
+            })
+        return action
 
     def _ensure_editable(self):
         self.ensure_one()
@@ -793,6 +830,7 @@ class TpNestingPreviewSession(models.Model):
             "state": self.state,
             "inputMode": self.nesting_input_mode,
             "kerfMm": self.kerf_mm,
+            "ignoreSheetStock": bool(self.env.company.tp_nesting_ignore_sheet_stock),
             "progressPct": progress_pct,
             "message": self.message or "",
             "lastError": self.last_error or "",
@@ -824,7 +862,8 @@ class TpNestingPreviewSession(models.Model):
             )
             entry["id"] = min(entry["id"], product.id)
             entry["product_ids"].append(product.id)
-            for sheet in SheetFormat.search([("product_id", "=", product.id), ("active", "=", True)]):
+            sheets = SheetFormat.search(SheetFormat._tp_internal_nesting_domain() + [("product_id", "=", product.id)])
+            for sheet in sheets._tp_filter_in_stock_for_nesting():
                 width = int(sheet.width_mm or 0)
                 height = int(sheet.height_mm or 0)
                 if width and height:
@@ -967,8 +1006,22 @@ class TpNestingPreviewBatch(models.Model):
         if cancel_requested():
             self.write({"state": "cancelled", "progress_pct": 100.0, "message": _("Cancelled.")})
             return
-        if not plan.get("ok"):
-            reason = (plan.get("metrics") or {}).get("infeasible_reason") or "unknown"
+        if not plan or not plan.get("ok"):
+            if self.best_result_id:
+                self.write(
+                    {
+                        "state": "failed",
+                        "progress_pct": 100.0,
+                        "message": _("Optimisation stopped before finishing."),
+                        "last_error": _(
+                            "Partial layout only. The solver found a first layout, "
+                            "but did not finish optimisation, so this result cannot be run."
+                        ),
+                    }
+                )
+                session._publish(touch=publish_session)
+                return
+            reason = ((plan or {}).get("metrics") or {}).get("infeasible_reason") or "unknown"
             self.write(
                 {
                     "state": "failed",
@@ -1019,6 +1072,7 @@ class TpNestingPreviewBatch(models.Model):
                 "preview_offcut_count": offcut_stats["count"],
                 "preview_best_offcut_mm": offcut_stats["best_mm"],
                 "preview_best_offcut_area_mm2": offcut_stats["best_area"],
+                "preview_generated_offcuts": offcut_stats["generated"],
                 "preview_fresh_sheet_count": fresh_sheet_count,
                 "preview_fresh_area_mm2": int(round(fresh_area)),
                 "preview_waste_area_mm2": int(round(waste)),
@@ -1073,14 +1127,23 @@ class TpNestingPreviewBatch(models.Model):
         best_area = 0
         best_mm = ""
         count = 0
-        for bin_data in bins:
+        generated = []
+        for sheet_index, bin_data in enumerate(bins, start=1):
             source = bin_data.get("source") or {}
-            if source.get("is_offcut"):
-                continue
             sheet_w = int(source.get("width_mm") or 0)
             sheet_h = int(source.get("height_mm") or 0)
             if sheet_w <= 0 or sheet_h <= 0:
                 continue
+            source_is_offcut = bool(source.get("is_offcut"))
+            record = source.get("record")
+            if source_is_offcut:
+                source_label = _("Offcut #%s") % (source.get("offcut_ref") or getattr(record, "offcut_ref", "") or source.get("id"))
+            else:
+                source_label = (
+                    getattr(record, "display_name", "")
+                    or source.get("stable_id")
+                    or _("Sheet")
+                )
             rects = [
                 (
                     int(placement.get("x") or 0),
@@ -1093,12 +1156,38 @@ class TpNestingPreviewBatch(models.Model):
             for _x, _y, width, height in offcut_rects(rects, sheet_w, sheet_h, min_side=80):
                 if width <= 0 or height <= 0:
                     continue
-                count += 1
                 area = int(width) * int(height)
-                if area > best_area:
+                if not source_is_offcut:
+                    count += 1
+                if not source_is_offcut and area > best_area:
                     best_area = area
                     best_mm = "%dx%d" % (int(width), int(height))
-        return {"count": count, "best_area": best_area, "best_mm": best_mm}
+                if int(width) >= 200 and int(height) >= 200:
+                    generated.append(
+                        {
+                            "key": "%s:%s:%s:%s:%s:%s" % (
+                                "offcut" if source_is_offcut else "sheet",
+                                source.get("id") or 0,
+                                len(generated),
+                                int(_x),
+                                int(_y),
+                                int(width) * int(height),
+                            ),
+                            "sheetIndex": sheet_index,
+                            "sourceType": "offcut" if source_is_offcut else "sheet",
+                            "sourceLabel": source_label,
+                            "widthMm": int(width),
+                            "heightMm": int(height),
+                            "areaM2": round(area / 1_000_000.0, 4),
+                            "x": int(_x),
+                            "y": int(_y),
+                            "kindLabel": _("Generated"),
+                        }
+                    )
+        generated.sort(key=lambda item: (-int(item["widthMm"]) * int(item["heightMm"]), item["sourceLabel"], item["x"], item["y"]))
+        for idx, item in enumerate(generated, start=1):
+            item["displayRef"] = _("Offcut %d") % idx
+        return {"count": count, "best_area": best_area, "best_mm": best_mm, "generated": generated}
 
     def _commit_best_result(self):
         self.ensure_one()
@@ -1142,6 +1231,7 @@ class TpNestingPreviewBatch(models.Model):
             }
         )
         Job._tp_run_create_allocations(run, bins, parts)
+        Job._tp_run_materialize_generated_offcuts(run, plan)
         Job._tp_run_finalize_metrics(run, plan)
 
         try:
@@ -1278,6 +1368,7 @@ class TpNestingPreviewBatch(models.Model):
     def _app_state(self):
         self.ensure_one()
         result = self.best_result_id
+        source_pool = self._source_pool_details()
         part_rows = []
         if (self.group_key or "").startswith(("manual_csv:", "csv_only:")):
             for part in self.with_context(active_test=False).part_ids.sorted(lambda item: (item.id,)):
@@ -1304,7 +1395,8 @@ class TpNestingPreviewBatch(models.Model):
             "cncPanelCount": self.cnc_panel_count,
             "sourceProductId": self.source_product_id.id or False,
             "sourceProductName": self._material_label(),
-            "sourcePoolSummary": self._source_pool_summary(),
+            "sourcePoolSummary": source_pool["summary"],
+            "offcuts": source_pool["offcuts"],
             "candidateSources": self.session_id._material_options(self.candidate_source_product_ids),
             "warning": self.warning or "",
             "progressPct": self.progress_pct,
@@ -1320,14 +1412,17 @@ class TpNestingPreviewBatch(models.Model):
         return Wizard._tp_group_label(self._identity())
 
     def _source_pool_summary(self):
+        return self._source_pool_details()["summary"]
+
+    def _source_pool_details(self):
         self.ensure_one()
         if not self.source_product_id:
-            return ""
+            return {"summary": "", "offcuts": []}
         Wizard = self.env["tp.nesting.run.wizard"].sudo()
         try:
             sources, offcut_sources = Wizard._tp_build_engine_sources(self.source_product_id, self._identity())
         except Exception:
-            return ""
+            return {"summary": "", "offcuts": []}
         sizes = sorted({
             (int(source.get("width_mm") or 0), int(source.get("height_mm") or 0))
             for source in sources
@@ -1341,7 +1436,29 @@ class TpNestingPreviewBatch(models.Model):
             parts.append(_("%(count)d sheet size(s): %(sizes)s") % {"count": len(sizes), "sizes": size_text})
         if offcut_sources:
             parts.append(_("%d offcut(s)") % len(offcut_sources))
-        return " | ".join(parts)
+        state_labels = dict(self.env["tp.offcut"]._fields["state"].selection)
+        offcuts = []
+        for source in offcut_sources:
+            offcut = source.get("record")
+            width = int(source.get("width_mm") or (offcut.width_mm if offcut else 0) or 0)
+            height = int(source.get("height_mm") or (offcut.height_mm if offcut else 0) or 0)
+            area = width * height
+            ref_value = source.get("offcut_ref") or (offcut.offcut_ref if offcut else 0)
+            state = (offcut.state if offcut else "") or ""
+            offcuts.append(
+                {
+                    "id": int(source.get("id") or (offcut.id if offcut else 0) or 0),
+                    "ref": "#%s" % ref_value if ref_value else _("Offcut"),
+                    "name": offcut.display_name if offcut else source.get("stable_id") or "",
+                    "widthMm": width,
+                    "heightMm": height,
+                    "areaM2": area / 1_000_000.0,
+                    "state": state,
+                    "stateLabel": state_labels.get(state, state or _("Available")),
+                }
+            )
+        offcuts.sort(key=lambda item: (-float(item["areaM2"] or 0.0), item["widthMm"], item["heightMm"], item["id"]))
+        return {"summary": " | ".join(parts), "offcuts": offcuts}
 
 
 class TpNestingPreviewResult(models.Model):
@@ -1375,5 +1492,6 @@ class TpNestingPreviewResult(models.Model):
             "sawCuts": self.saw_cut_count,
             "utilizationPct": self.utilization_pct,
             "wasteM2": (self.waste_area_mm2 or 0.0) / 1_000_000.0,
+            "generatedOffcuts": (self.metrics_json or {}).get("preview_generated_offcuts") or [],
             "metrics": self.metrics_json or {},
         }

@@ -9,6 +9,7 @@
                 <field name="product_id"/>
                 <field name="width_mm"/>
                 <field name="height_mm"/>
+                <field name="tp_availability"/>
                 <field name="area_mm2"/>
                 <field name="landed_cost"/>
                 <field name="active"/>
@@ -26,6 +27,7 @@
                         <group string="Core">
                             <field name="name"/>
                             <field name="product_id"/>
+                            <field name="tp_availability"/>
                             <field name="active"/>
                         </group>
                         <group string="Dimensions">
@@ -60,10 +62,14 @@
                 <field name="product_id"/>
                 <field name="tp_material_type"/>
                 <field name="tp_thickness_mm"/>
+                <field name="tp_availability"/>
                 <filter string="Active" name="active" domain="[('active', '=', True)]"/>
+                <filter string="Internal Stock" name="internal_stock" domain="[('tp_availability', '=', 'stock')]"/>
+                <filter string="Supplier / Quote Only" name="supplier_quote" domain="[('tp_availability', '=', 'supplier_quote')]"/>
                 <group>
                     <filter string="By Product" name="group_product" context="{'group_by': 'product_id'}"/>
                     <filter string="By Material" name="group_material" context="{'group_by': 'tp_material_type'}"/>
+                    <filter string="By Availability" name="group_availability" context="{'group_by': 'tp_availability'}"/>
                 </group>
             </search>
         </field>

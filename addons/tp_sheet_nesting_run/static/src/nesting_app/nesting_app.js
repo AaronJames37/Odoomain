@@ -193,8 +193,16 @@ export class TpNestingLiveApp extends Component {
 
     get canCommit() {
         const session = this.state.session;
-        return session && ["running", "done", "failed", "cancelled"].includes(session.state)
-            && (session.batches || []).filter((batch) => batch.selected).every((batch) => !!batch.bestResult);
+        if (!session || !["running", "done"].includes(session.state)) {
+            return false;
+        }
+        const selected = (session.batches || []).filter((batch) => batch.selected);
+        return selected.length > 0 && selected.every((batch) => {
+            if (!batch.bestResult) {
+                return false;
+            }
+            return session.state === "running" || batch.state === "done";
+        });
     }
 
     batchClass(batch) {
@@ -253,6 +261,16 @@ export class TpNestingLiveApp extends Component {
 
     onKerfInput(ev) {
         this.state.session.kerfMm = Number(ev.target.value || 0);
+    }
+
+    async onIgnoreSheetStockChange(ev) {
+        const checked = Boolean(ev.target.checked);
+        this.state.session.ignoreSheetStock = checked;
+        const data = await this.orm.call("tp.nesting.preview.session", "update_settings", [
+            [this.state.session.id],
+            { ignore_sheet_stock: checked },
+        ]);
+        await this.applySession(data);
     }
 
     async onCsvFile(ev) {

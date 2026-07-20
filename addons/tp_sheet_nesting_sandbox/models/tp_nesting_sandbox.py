@@ -117,11 +117,12 @@ class TpNestingSandbox(models.TransientModel):
     def _tp_default_sheet_format(self, product):
         if not product:
             return self.env["tp.sheet.format"]
-        return self.env["tp.sheet.format"].search(
-            [("product_id", "=", product.id)],
+        SheetFormat = self.env["tp.sheet.format"]
+        formats = self.env["tp.sheet.format"].search(
+            SheetFormat._tp_internal_nesting_domain() + [("product_id", "=", product.id)],
             order="width_mm desc, height_mm desc",
-            limit=1,
         )
+        return formats._tp_filter_in_stock_for_nesting()[:1]
 
     # ------------------------------------------------------------------
     # Run
@@ -154,12 +155,18 @@ class TpNestingSandbox(models.TransientModel):
         # utilisation — matching the website quote and production job. Falls back
         # to the single selected sheet if sibling discovery finds nothing.
         try:
-            siblings = self.sheet_format_id._tp_quote_sibling_sheets(self.sheet_format_id)
+            siblings = self.sheet_format_id._tp_quote_sibling_sheets(
+                self.sheet_format_id,
+                include_supplier_quote=False,
+            )
         except Exception:  # noqa: BLE001 — degrade to the single selected sheet
             _logger.exception("Sandbox sibling-sheet discovery failed")
             siblings = self.sheet_format_id
+        if not self.sheet_format_id._tp_filter_internal_nesting():
+            raise UserError("Supplier / quote only sheet formats are not available to workshop sandbox nesting.")
+        siblings = siblings._tp_filter_in_stock_for_nesting()
         if not siblings:
-            siblings = self.sheet_format_id
+            raise UserError("No in-stock full sheet formats are available for this sandbox nest.")
         sources = [self._tp_sheet_format_source(s) for s in siblings]
 
         t0 = time.perf_counter()
@@ -272,6 +279,9 @@ class TpNestingSandbox(models.TransientModel):
         height = int(sheet.height_mm or 0)
         area = float(width * height)
         unit_cost = float(getattr(sheet, "landed_cost", 0.0) or 0.0)
+        qty_by_product = {}
+        if not self.env.company.tp_nesting_ignore_sheet_stock and sheet.product_id:
+            qty_by_product = sheet._tp_nesting_stock_qty_by_product(sheet.product_id)
         return {
             "kind": "sheet_format",
             "stable_id": f"sandbox_sheet_format:{sheet.id}",
@@ -284,6 +294,7 @@ class TpNestingSandbox(models.TransientModel):
             "area_mm2": area,
             "unit_cost": unit_cost,
             "effective_cost_per_area": (unit_cost / area) if area > 0 else 0.0,
+            "available_qty": int(qty_by_product.get(sheet.product_id.id, 0.0)) if qty_by_product else None,
         }
 
     # ------------------------------------------------------------------

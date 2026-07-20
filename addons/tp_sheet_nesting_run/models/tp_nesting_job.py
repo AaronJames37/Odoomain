@@ -87,20 +87,21 @@ class TpNestingJob(models.Model):
             raise UserError(_("No warehouse configured for company %s.") % self.env.company.display_name)
         stock_location = warehouse.lot_stock_id
 
-        shortages = []
-        for product_id, qty in product_to_qty.items():
-            product = Product.browse(product_id)
-            available = product.with_context(location=stock_location.id).qty_available
-            if available < qty:
-                shortages.append(
-                    "  - %s: need %d, have %.1f"
-                    % (product.display_name, qty, available)
-                )
-        if shortages:
-            raise UserError(_(
-                "Insufficient stock to run this nest. Shortages:\n%s\n\n"
-                "No records were created. Top up stock and retry."
-            ) % "\n".join(shortages))
+        if not self.env.company.tp_nesting_ignore_sheet_stock:
+            shortages = []
+            for product_id, qty in product_to_qty.items():
+                product = Product.browse(product_id)
+                available = product.with_context(location=stock_location.id).qty_available
+                if available < qty:
+                    shortages.append(
+                        "  - %s: need %d, have %.1f"
+                        % (product.display_name, qty, available)
+                    )
+            if shortages:
+                raise UserError(_(
+                    "Insufficient stock to run this nest. Shortages:\n%s\n\n"
+                    "No records were created. Top up stock and retry."
+                ) % "\n".join(shortages))
 
         # 5. Create the nesting run record --------------------------------------
         Run = self.env["tp.nesting.run"].sudo()
@@ -186,6 +187,7 @@ class TpNestingJob(models.Model):
         # tp.nesting.allocation rows are nice to have but not strictly needed
         # for the cost chain. Persist them so the run's form shows placements.
         self._tp_run_create_allocations(run, bins, parts)
+        self._tp_run_materialize_generated_offcuts(run, plan)
         self._tp_run_finalize_metrics(run, plan)
 
         # Build DXF bundle (one DXF per sheet, packed in a zip) and store on
@@ -274,12 +276,13 @@ class TpNestingJob(models.Model):
         if not source_products:
             return []
 
-        formats = SF.search([
-            ("product_id", "in", source_products.ids),
-            ("active", "=", True),
-        ])
+        formats = SF.search(SF._tp_internal_nesting_domain() + [("product_id", "in", source_products.ids)])
+        formats = formats._tp_filter_in_stock_for_nesting()
         if not formats:
             return []
+        qty_by_product = {}
+        if not self.env.company.tp_nesting_ignore_sheet_stock:
+            qty_by_product = formats._tp_nesting_stock_qty_by_product(formats.mapped("product_id"))
 
         sources = []
         for sheet in formats:
@@ -299,6 +302,7 @@ class TpNestingJob(models.Model):
                 "area_mm2": area,
                 "unit_cost": unit_cost,
                 "effective_cost_per_area": (unit_cost / area) if area > 0 else 0.0,
+                "available_qty": int(qty_by_product.get(sheet.product_id.id, 0.0)) if qty_by_product else None,
             })
         return sources
 
@@ -758,6 +762,8 @@ class TpNestingJob(models.Model):
                 "order_name": "pattern_constructor",
             }
 
+        latest_progress_plan = {"plan": None}
+
         def on_solver_progress(payload):
             if not progress_callback:
                 return
@@ -771,6 +777,7 @@ class TpNestingJob(models.Model):
                 metrics=payload.get("stats") or {},
             )
             if plan and plan.get("ok"):
+                latest_progress_plan["plan"] = plan
                 progress_callback(plan, event=payload.get("event") or "best")
 
         try:
@@ -803,6 +810,16 @@ class TpNestingJob(models.Model):
                 len(pieces),
                 source.get("stable_id") or source.get("id") or "",
             )
+            if latest_progress_plan.get("plan"):
+                return {
+                    "ok": False,
+                    "bins": [],
+                    "metrics": {
+                        "time_budget_hit": True,
+                        "memory_budget_hit": True,
+                        "infeasible_reason": "memory_budget_hit_after_partial_preview",
+                    },
+                }
             return None
         except Exception as exc:
             _logger.warning(
@@ -966,6 +983,7 @@ class TpNestingJob(models.Model):
 
         candidates = []
         rejected_count = 0
+        stock_rejected_count = 0
         budget = float(time_budget_s or 0.0)
         deadline = started_at + budget if budget > 0 else None
         offcut_bins, base, offcut_metrics = self._tp_run_offcut_prepass(
@@ -1020,6 +1038,25 @@ class TpNestingJob(models.Model):
                 self._tp_plan_compactness(plan),
             )
 
+        def plan_within_fresh_stock(plan):
+            if self.env.company.tp_nesting_ignore_sheet_stock:
+                return True
+            usage = {}
+            limits = {}
+            for bin_data in plan.get("bins") or []:
+                source = bin_data.get("source") or {}
+                if source.get("is_offcut"):
+                    continue
+                limit = source.get("available_qty")
+                if limit in (None, False):
+                    continue
+                key = source.get("stable_id") or source.get("id") or source.get("product_id")
+                if not key:
+                    continue
+                usage[key] = usage.get(key, 0) + 1
+                limits[key] = max(0, int(limit or 0))
+            return all(qty <= limits.get(key, qty) for key, qty in usage.items())
+
         def finalize_plan(best_plan):
             elapsed_ms = max(1, int((time.monotonic() - started_at) * 1000))
             best_plan = dict(best_plan)
@@ -1041,6 +1078,10 @@ class TpNestingJob(models.Model):
                 "rejected_plan_count": max(
                     rejected_count,
                     int(metrics.get("rejected_plan_count") or 0),
+                ),
+                "stock_rejected_plan_count": max(
+                    stock_rejected_count,
+                    int(metrics.get("stock_rejected_plan_count") or 0),
                 ),
                 "full_sheet_count": fresh_sheets,
                 "fresh_waste_area_mm2": fresh_waste,
@@ -1110,11 +1151,19 @@ class TpNestingJob(models.Model):
             if not plan or not plan.get("ok") or not plan.get("bins"):
                 if offcut_bins and not base and plan and plan.get("ok"):
                     plan = merge_with_offcuts(plan)
+                    if not plan_within_fresh_stock(plan):
+                        stock_rejected_count += 1
+                        rejected_count += 1
+                        break
                     candidates.append((score_plan(plan), plan))
                     break
                 rejected_count += 1
                 continue
             plan = merge_with_offcuts(plan)
+            if not plan_within_fresh_stock(plan):
+                stock_rejected_count += 1
+                rejected_count += 1
+                continue
             if not self._tp_plan_is_guillotine(plan):
                 rejected_count += 1
                 continue
@@ -1124,14 +1173,16 @@ class TpNestingJob(models.Model):
 
         elapsed_ms = max(1, int((time.monotonic() - started_at) * 1000))
         if not candidates:
+            reason = "insufficient_full_sheet_stock" if stock_rejected_count else "guillotine_no_solution"
             return {
                 "ok": False,
                 "metrics": {
-                    "infeasible_reason": "guillotine_no_solution",
+                    "infeasible_reason": reason,
                     "search_ms": elapsed_ms,
                     "search_nodes": max(1, len(sources)),
                     "candidate_plan_count": len(sources),
                     "rejected_plan_count": rejected_count,
+                    "stock_rejected_plan_count": stock_rejected_count,
                     "selected_order_name": "",
                     "current_source_of_truth": True,
                     "pattern_constructor_only": True,
@@ -1240,6 +1291,161 @@ class TpNestingJob(models.Model):
                     "allocated_area_mm2": float(fit_w * fit_h),
                     "status": "reserved" if is_offcut else "allocated",
                 })
+
+    @api.model
+    def _tp_run_materialize_generated_offcuts(self, run, plan):
+        """Create real offcut records from the committed guillotine layout.
+
+        Live preview commits do not go through the old MO Produce All path before
+        the operator prints the run PDF, so materialise reusable remainders here
+        and attach their human offcut IDs to the run immediately.
+        """
+        run.ensure_one()
+        if run.outputs_materialized or run.produced_offcut_ids:
+            return run.produced_offcut_ids
+
+        from odoo.addons.tp_sheet_nesting.models.services.tp_guillotine_cuts import offcut_rects
+
+        Produced = self.env["tp.nesting.produced.offcut"].sudo()
+        Offcut = self.env["tp.offcut"].sudo()
+        Format = self.env["tp.sheet.format"].sudo()
+        Product = self.env["product.product"].sudo()
+        Lot = self.env["stock.lot"].sudo()
+        now = fields.Datetime.now()
+        consumed_offcuts = Offcut.browse()
+
+        def create_produced_row(*, source_type, product, width, height, offcut=False, parent_lot=False, parent_offcut=False, parent_area=0.0, parent_value=0.0):
+            return Produced.create(
+                {
+                    "run_id": run.id,
+                    "planned_kind": "offcut",
+                    "planned_source_type": source_type,
+                    "product_id": product.id if product else False,
+                    "parent_lot_id": parent_lot.id if parent_lot else False,
+                    "parent_offcut_id": parent_offcut.id if parent_offcut else False,
+                    "planned_width_mm": int(width),
+                    "planned_height_mm": int(height),
+                    "kerf_mm": int(run.kerf_mm or 3),
+                    "parent_remaining_area_mm2": float(parent_area or 0.0),
+                    "parent_remaining_value": float(parent_value or 0.0),
+                    "currency_id": self.env.company.currency_id.id,
+                    "state": "materialized",
+                    "offcut_id": offcut.id if offcut else False,
+                    "materialized_at": now,
+                }
+            )
+
+        for bin_idx, bin_data in enumerate((plan or {}).get("bins") or [], start=1):
+            source = bin_data.get("source") or {}
+            placements = bin_data.get("placements") or []
+            source_w = int(source.get("width_mm") or 0)
+            source_h = int(source.get("height_mm") or 0)
+            if source_w <= 0 or source_h <= 0 or not placements:
+                continue
+            rects = [
+                (
+                    int(placement.get("x") or 0),
+                    int(placement.get("y") or 0),
+                    int(placement.get("fit_w") or 0),
+                    int(placement.get("fit_h") or 0),
+                )
+                for placement in placements
+            ]
+            generated = offcut_rects(rects, source_w, source_h, min_side=199)
+            if not generated:
+                continue
+
+            if source.get("is_offcut"):
+                parent_offcut = Offcut.browse(int(source.get("id") or 0))
+                if not parent_offcut.exists():
+                    continue
+                consumed_offcuts |= parent_offcut
+                for _x, _y, width, height in generated:
+                    parent_area = float(parent_offcut.remaining_area_mm2 or parent_offcut.area_mm2 or 0.0)
+                    parent_value = float(parent_offcut.remaining_value or 0.0)
+                    child = parent_offcut.record_remainder(
+                        width_mm=int(width),
+                        height_mm=int(height),
+                        mo_id=run.mo_id.id if run.mo_id else False,
+                        run_id=run.id,
+                        kerf_mm=int(run.kerf_mm or 3),
+                        name=False,
+                    )
+                    if child._name != "tp.offcut":
+                        continue
+                    create_produced_row(
+                        source_type="offcut",
+                        product=parent_offcut.product_id,
+                        width=width,
+                        height=height,
+                        offcut=child,
+                        parent_lot=parent_offcut.parent_lot_id or parent_offcut.lot_id,
+                        parent_offcut=parent_offcut,
+                        parent_area=parent_area,
+                        parent_value=parent_value,
+                    )
+                continue
+
+            sheet_format = Format.browse(int(source.get("id") or 0))
+            product = sheet_format.product_id if sheet_format.exists() else Product.browse(int(source.get("product_id") or 0))
+            product = product if product and product.exists() else False
+            if not product:
+                continue
+            parent_lot = Lot.create(
+                {
+                    "name": "SHEET-PARENT-%s-%s" % (run.id, bin_idx),
+                    "product_id": product.id,
+                    "company_id": self.env.company.id,
+                }
+            )
+            parent_area = float(source_w * source_h)
+            parent_value = float(
+                source.get("unit_cost")
+                or (sheet_format.landed_cost if sheet_format.exists() else 0.0)
+                or product.standard_price
+                or 0.0
+            )
+            for _x, _y, width, height in generated:
+                offcut = Offcut.create_offcut_from_sheet(
+                    lot_id=False,
+                    parent_lot_id=parent_lot.id,
+                    width_mm=int(width),
+                    height_mm=int(height),
+                    parent_remaining_area_mm2=parent_area,
+                    parent_remaining_value=parent_value,
+                    mo_id=run.mo_id.id if run.mo_id else False,
+                    run_id=run.id,
+                    name=False,
+                )
+                create_produced_row(
+                    source_type="sheet",
+                    product=product,
+                    width=width,
+                    height=height,
+                    offcut=offcut,
+                    parent_lot=parent_lot,
+                    parent_area=parent_area,
+                    parent_value=parent_value,
+                )
+
+        for offcut in consumed_offcuts:
+            trace_vals = {}
+            if "consumed_in_run_id" in offcut._fields:
+                trace_vals["consumed_in_run_id"] = run.id
+            if "consumed_at" in offcut._fields:
+                trace_vals["consumed_at"] = now
+            if trace_vals:
+                offcut.write(trace_vals)
+            if offcut.state != "inactive":
+                offcut.action_archive()
+
+        run.sudo().write(
+            {
+                "outputs_materialized": True,
+                "outputs_materialized_at": now,
+            }
+        )
+        return run.produced_offcut_ids
 
     @api.model
     def _tp_run_finalize_metrics(self, run, plan):

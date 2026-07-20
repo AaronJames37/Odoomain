@@ -22,6 +22,10 @@
                             <span>Kerf mm</span>
                             <input type="number" min="0" step="1" t-att-value="state.session.kerfMm" t-on-input="onKerfInput" t-att-disabled="state.session.state === 'running'"/>
                         </label>
+                        <label class="tp_nesting_checkbox">
+                            <input type="checkbox" t-att-checked="state.session.ignoreSheetStock" t-on-change="onIgnoreSheetStockChange" t-att-disabled="state.session.state === 'running'"/>
+                            <span>Ignore full sheet stock</span>
+                        </label>
                     </div>
 
                     <div class="tp_nesting_progress">
@@ -138,49 +142,12 @@
                 </aside>
 
                 <main class="tp_nesting_workspace">
-                    <header class="tp_nesting_workspace_header">
-                        <div class="tp_nesting_workspace_title">
-                            <h2 t-esc="selectedBatch ? selectedBatch.label : 'No batch selected'"/>
-                            <div class="tp_nesting_workspace_subline" t-if="selectedBatch">
-                                <span t-esc="selectedBatch.sourceProductName"/>
-                                <span t-if="selectedBatch.sourcePoolSummary" t-esc="selectedBatch.sourcePoolSummary"/>
-                            </div>
-                        </div>
-                        <t t-if="selectedBatch">
-                            <select t-att-value="selectedBatch.sourceProductId || ''" t-on-change="(ev) => this.changeSource(selectedBatch, ev)" t-att-disabled="state.session.state === 'running'">
-                                <option value="">Choose material</option>
-                                <t t-foreach="selectedBatch.candidateSources" t-as="source" t-key="source.id">
-                                    <option t-att-value="source.id" t-esc="source.name"/>
-                                </t>
-                            </select>
-                        </t>
-                    </header>
-
-                    <section class="tp_nesting_metrics" t-if="selectedBatch">
-                        <div>
-                            <span>Panels</span>
-                            <strong t-esc="selectedBatch.panelQuantity"/>
-                        </div>
-                        <div>
-                            <span>Sheets</span>
-                            <strong t-esc="selectedBatch.bestResult ? selectedBatch.bestResult.sheetCount : '-'"/>
-                        </div>
-                        <div>
-                            <span>Saw Cuts</span>
-                            <strong t-esc="selectedBatch.bestResult ? selectedBatch.bestResult.sawCuts : '-'"/>
-                        </div>
-                        <div>
-                            <span>Utilisation</span>
-                            <strong t-esc="selectedBatch.bestResult ? selectedBatch.bestResult.utilizationPct.toFixed(2) + '%' : '-'"/>
-                        </div>
-                        <div>
-                            <span>Waste</span>
-                            <strong t-esc="selectedBatch.bestResult ? selectedBatch.bestResult.wasteM2.toFixed(4) + ' m²' : '-'"/>
-                        </div>
-                    </section>
-
                     <section class="tp_nesting_preview_stage">
                         <t t-if="selectedBatch &amp;&amp; selectedBatch.bestResult">
+                            <div class="tp_nesting_preview_warning" t-if="selectedBatch.lastError">
+                                <i class="fa fa-exclamation-triangle"/>
+                                <span t-esc="selectedBatch.lastError"/>
+                            </div>
                             <div class="tp_nesting_svg_wrap" t-out="previewHtml"/>
                         </t>
                         <t t-elif="selectedBatch">
@@ -196,6 +163,77 @@
                             </div>
                         </t>
                     </section>
+
+                    <aside class="tp_nesting_workspace_info">
+                        <header class="tp_nesting_workspace_header">
+                            <div class="tp_nesting_workspace_title">
+                                <h2 t-esc="selectedBatch ? selectedBatch.label : 'No batch selected'"/>
+                                <div class="tp_nesting_workspace_subline" t-if="selectedBatch">
+                                    <span t-esc="selectedBatch.sourceProductName"/>
+                                    <span t-if="selectedBatch.sourcePoolSummary" t-esc="selectedBatch.sourcePoolSummary"/>
+                                </div>
+                            </div>
+                            <t t-if="selectedBatch">
+                                <select t-att-value="selectedBatch.sourceProductId || ''" t-on-change="(ev) => this.changeSource(selectedBatch, ev)" t-att-disabled="state.session.state === 'running'">
+                                    <option value="">Choose material</option>
+                                    <t t-foreach="selectedBatch.candidateSources" t-as="source" t-key="source.id">
+                                        <option t-att-value="source.id" t-esc="source.name"/>
+                                    </t>
+                                </select>
+                            </t>
+                        </header>
+
+                        <section class="tp_nesting_metrics" t-if="selectedBatch">
+                            <div>
+                                <span>Panels</span>
+                                <strong t-esc="selectedBatch.panelQuantity"/>
+                            </div>
+                            <div>
+                                <span>Sheets</span>
+                                <strong t-esc="selectedBatch.bestResult ? selectedBatch.bestResult.sheetCount : '-'"/>
+                            </div>
+                            <div>
+                                <span>Saw Cuts</span>
+                                <strong t-esc="selectedBatch.bestResult ? selectedBatch.bestResult.sawCuts : '-'"/>
+                            </div>
+                            <div>
+                                <span>Utilisation</span>
+                                <strong t-esc="selectedBatch.bestResult ? selectedBatch.bestResult.utilizationPct.toFixed(2) + '%' : '-'"/>
+                            </div>
+                            <div>
+                                <span>Waste</span>
+                                <strong t-esc="selectedBatch.bestResult ? selectedBatch.bestResult.wasteM2.toFixed(4) + ' m²' : '-'"/>
+                            </div>
+                        </section>
+
+                        <section class="tp_nesting_offcuts" t-if="selectedBatch">
+                            <t t-set="generatedOffcuts" t-value="selectedBatch.bestResult ? (selectedBatch.bestResult.generatedOffcuts || []) : []"/>
+                            <div class="tp_nesting_offcuts_header">
+                                <span>Generated Offcuts</span>
+                                <strong t-esc="generatedOffcuts.length"/>
+                            </div>
+                            <t t-if="generatedOffcuts.length">
+                                <div class="tp_nesting_offcut_list">
+                                    <t t-foreach="generatedOffcuts" t-as="offcut" t-key="offcut.key || offcut.displayRef">
+                                        <div class="tp_nesting_offcut_row">
+                                            <div>
+                                                <strong t-esc="offcut.displayRef"/>
+                                                <span t-esc="'Sheet ' + offcut.sheetIndex"/>
+                                            </div>
+                                            <div>
+                                                <span t-esc="offcut.widthMm + ' x ' + offcut.heightMm + 'mm'"/>
+                                                <span t-esc="offcut.areaM2.toFixed(3) + ' m²'"/>
+                                            </div>
+                                            <small class="is-generated" t-esc="offcut.kindLabel"/>
+                                        </div>
+                                    </t>
+                                </div>
+                            </t>
+                            <t t-else="">
+                                <div class="tp_nesting_empty" t-esc="selectedBatch.bestResult ? 'No reusable offcuts generated.' : 'Preview a batch to see generated offcuts.'"/>
+                            </t>
+                        </section>
+                    </aside>
                 </main>
             </t>
         </div>

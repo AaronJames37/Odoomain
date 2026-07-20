@@ -171,21 +171,22 @@ class TpNestingRun(models.Model):
             raise UserError("No 'Production' stock location found.")
 
         # Re-check stock NOW (don't trust what was available at wizard time).
-        shortages = []
-        for product_id, qty in product_to_qty.items():
-            sheet = Product.browse(product_id).with_context(location=stock_location.id)
-            available = sheet.qty_available
-            if available < qty:
-                shortages.append(
-                    "  - %s: need %d sheets, have %.1f"
-                    % (sheet.display_name, qty, available)
+        if not self.env.company.tp_nesting_ignore_sheet_stock:
+            shortages = []
+            for product_id, qty in product_to_qty.items():
+                sheet = Product.browse(product_id).with_context(location=stock_location.id)
+                available = sheet.qty_available
+                if available < qty:
+                    shortages.append(
+                        "  - %s: need %d sheets, have %.1f"
+                        % (sheet.display_name, qty, available)
+                    )
+            if shortages:
+                raise UserError(
+                    "Insufficient stock for this nesting run:\n%s\n\n"
+                    "Top up stock and try again."
+                    % "\n".join(shortages)
                 )
-        if shortages:
-            raise UserError(
-                "Insufficient stock for this nesting run:\n%s\n\n"
-                "Top up stock and try again."
-                % "\n".join(shortages)
-            )
 
         cut_op = Product.search([("default_code", "=", "CUT-OPERATION")], limit=1)
         if not cut_op:

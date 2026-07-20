@@ -7,6 +7,10 @@ class ResConfigSettings(models.TransientModel):
         related="company_id.tp_nesting_kerf_mm",
         readonly=False,
     )
+    tp_nesting_ignore_sheet_stock = fields.Boolean(
+        related="company_id.tp_nesting_ignore_sheet_stock",
+        readonly=False,
+    )
     tp_nesting_trim_edge_mm = fields.Integer(
         related="company_id.tp_nesting_trim_edge_mm",
         readonly=False,

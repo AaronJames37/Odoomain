@@ -7,6 +7,16 @@ class ResCompany(models.Model):
         default=3,
         string="Nesting Kerf (mm)",
     )
+    tp_nesting_ignore_sheet_stock = fields.Boolean(
+        default=False,
+        string="Ignore Full Sheet Stock Levels",
+        help=(
+            "When disabled, workshop nesting only considers full sheet SKUs "
+            "that currently have stock in the main warehouse. Offcuts are still "
+            "considered separately. Enable this to allow out-of-stock full "
+            "sheets into the nesting source pool."
+        ),
+    )
     tp_nesting_trim_edge_mm = fields.Integer(
         default=0,
         string="Trim Edge (mm, discontinued)",

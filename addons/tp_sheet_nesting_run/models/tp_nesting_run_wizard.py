@@ -481,15 +481,23 @@ class TpNestingRunWizard(models.TransientModel):
             raise UserError(_("No active panels were available in the selected batches."))
 
         self.write({"state": "done"})
-        return {
+        action = {
             "type": "ir.actions.act_window",
             "name": _("Created Nesting Runs"),
             "res_model": "tp.nesting.run",
             "view_mode": "list,form",
+            "views": [[False, "list"], [False, "form"]],
             "domain": [("id", "in", run_ids)],
             "target": "current",
             "context": {"create": False},
         }
+        if len(run_ids) == 1:
+            action.update({
+                "view_mode": "form",
+                "views": [[False, "form"]],
+                "res_id": run_ids[0],
+            })
+        return action
 
     def action_preview_all(self):
         """Render an SVG layout for every selected batch, stacked vertically
@@ -847,6 +855,7 @@ class TpNestingRunWizard(models.TransientModel):
         )
 
         Job._tp_run_create_allocations(run, bins, parts)
+        Job._tp_run_materialize_generated_offcuts(run, plan)
         Job._tp_run_finalize_metrics(run, plan)
 
         Sandbox = self.env["tp.nesting.sandbox"].sudo()
@@ -1002,7 +1011,7 @@ class TpNestingRunWizard(models.TransientModel):
 
     def _tp_all_source_products_with_active_formats(self):
         SheetFormat = self.env["tp.sheet.format"].sudo()
-        products = SheetFormat.search([("active", "=", True)]).mapped("product_id")
+        products = SheetFormat.search(SheetFormat._tp_internal_nesting_domain()).mapped("product_id")
         return products.filtered(lambda product: product).sorted(lambda product: (product.display_name or "", product.id))
 
     def _tp_source_product_identity(self, source_product):
@@ -1051,7 +1060,7 @@ class TpNestingRunWizard(models.TransientModel):
             )
             products |= maps.mapped("source_product_id")
 
-        matching_formats = SheetFormat.search([("active", "=", True)]).filtered(
+        matching_formats = SheetFormat.search(SheetFormat._tp_internal_nesting_domain()).filtered(
             lambda sheet: self._tp_record_identity_compatible(sheet, identity, strict=True)
         )
         products |= matching_formats.mapped("product_id")
@@ -1060,16 +1069,19 @@ class TpNestingRunWizard(models.TransientModel):
         return (compatible or products).sorted(lambda product: (product.display_name or "", product.id))
 
     def _tp_product_has_active_formats(self, product):
-        return bool(self.env["tp.sheet.format"].sudo().search_count([("product_id", "=", product.id), ("active", "=", True)]))
+        SheetFormat = self.env["tp.sheet.format"].sudo()
+        return bool(SheetFormat.search_count(SheetFormat._tp_internal_nesting_domain() + [("product_id", "=", product.id)]))
 
     def _tp_product_source_compatible(self, product, identity):
-        formats = self.env["tp.sheet.format"].sudo().search([("product_id", "=", product.id), ("active", "=", True)])
+        SheetFormat = self.env["tp.sheet.format"].sudo()
+        formats = SheetFormat.search(SheetFormat._tp_internal_nesting_domain() + [("product_id", "=", product.id)])
         if formats.filtered(lambda sheet: self._tp_record_identity_compatible(sheet, identity, strict=False)):
             return True
         return self._tp_record_identity_compatible(product, identity, strict=False)
 
     def _tp_build_sheet_sources(self, source_product, identity):
-        all_formats = self.env["tp.sheet.format"].sudo().search([("active", "=", True)])
+        SheetFormat = self.env["tp.sheet.format"].sudo()
+        all_formats = SheetFormat.search(SheetFormat._tp_internal_nesting_domain())
         strict_compatible = all_formats.filtered(
             lambda sheet: self._tp_record_identity_compatible(sheet, identity, strict=True)
         )
@@ -1079,20 +1091,19 @@ class TpNestingRunWizard(models.TransientModel):
         if compatible:
             formats = compatible
         else:
-            formats = self.env["tp.sheet.format"].sudo().search(
-                [("product_id", "=", source_product.id), ("active", "=", True)]
-            )
+            formats = SheetFormat.search(SheetFormat._tp_internal_nesting_domain() + [("product_id", "=", source_product.id)])
             compatible = formats.filtered(lambda sheet: self._tp_record_identity_compatible(sheet, identity, strict=False))
             if compatible:
                 formats = compatible
         if not formats:
-            raise UserError(
-                _(
-                    "No tp.sheet.format record exists for material %s. "
-                    "Create one in Sheet Nesting configuration before running."
-                )
-                % self._tp_csv_source_label(source_product, identity)
-            )
+            return []
+
+        formats = formats._tp_filter_in_stock_for_nesting()
+        if not formats:
+            return []
+        qty_by_product = {}
+        if not self.env.company.tp_nesting_ignore_sheet_stock:
+            qty_by_product = formats._tp_nesting_stock_qty_by_product(formats.mapped("product_id"))
 
         sources = []
         seen = set()
@@ -1122,6 +1133,7 @@ class TpNestingRunWizard(models.TransientModel):
                     "area_mm2": area,
                     "unit_cost": unit_cost,
                     "effective_cost_per_area": (unit_cost / area) if area > 0 else 0.0,
+                    "available_qty": int(qty_by_product.get(sheet.product_id.id, 0.0)) if qty_by_product else None,
                 }
             )
         return sources
@@ -1137,6 +1149,7 @@ class TpNestingRunWizard(models.TransientModel):
                 ("product_id", "=", product.id),
                 ("width_mm", "=", width),
                 ("height_mm", "=", height),
+                ("tp_availability", "=", "stock"),
             ],
             limit=1,
         )
@@ -1173,9 +1186,19 @@ class TpNestingRunWizard(models.TransientModel):
         Job = self.env["tp.nesting.job"].sudo()
 
         sources = self._tp_build_sheet_sources(source_product, identity)
-        if not sources:
-            raise UserError(_("No usable sheet sources found for %s.") % self._tp_csv_source_label(source_product, identity))
-        return sources, Job._tp_run_offcut_sources(source_product, identity)
+        offcut_sources = Job._tp_run_offcut_sources(source_product, identity)
+        if not sources and not offcut_sources:
+            label = self._tp_csv_source_label(source_product, identity)
+            if self.env.company.tp_nesting_ignore_sheet_stock:
+                raise UserError(_("No usable sheet sources or compatible offcuts found for %s.") % label)
+            raise UserError(
+                _(
+                    "No in-stock full sheet sources or compatible offcuts found for %s. "
+                    "Enable 'Ignore Full Sheet Stock' in Sheet Nesting settings to allow out-of-stock full sheets."
+                )
+                % label
+            )
+        return sources, offcut_sources
 
     @api.model
     def _tp_record_identity_compatible(self, record, identity, *, strict):

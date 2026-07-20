@@ -3507,6 +3507,78 @@ def _append_candidate_variants(candidates, cand, *, allow_mirror=True):
     return added
 
 
+def _candidate_prune_key(cand, sheet_w, sheet_h):
+    sheets = cand.get("sheets") or []
+    used = tuple(cand.get("used") or ())
+    used_area = 0
+    cut_count = 0
+    for sheet in sheets:
+        cut_count += _guillotine_tree_cut_count(sheet)
+        for pl in sheet.placements or []:
+            used_area += int(pl["w"]) * int(pl["h"])
+    full = int(_best_offcut_info(sheets, full_dim_only=True).get("value") or 0) // 10000
+    best = int(_best_offcut_info(sheets).get("value") or 0) // 10000
+    return (
+        len(sheets),
+        -int(used_area),
+        -len(used),
+        -int(full),
+        int(cut_count),
+        -int(best),
+        cand.get("strategy") or "",
+        tuple(used),
+    )
+
+
+def _prune_candidate_pool(candidates, sheet_w, sheet_h, limit):
+    """Keep a bounded, strategy-diverse candidate pool.
+
+    Several v2 generators can legitimately produce thousands of valid one-sheet
+    variants. The beam only needs the best spread of those; retaining all of
+    them makes the next partial-state layer balloon and can push an Odoo worker
+    over its memory cap before the time budget expires.
+    """
+    limit = max(1, int(limit or 0))
+    if len(candidates or []) <= limit:
+        return candidates
+
+    ranked = sorted(
+        enumerate(candidates),
+        key=lambda pair: (_candidate_prune_key(pair[1], sheet_w, sheet_h), pair[0]),
+    )
+    selected = []
+    selected_indexes = set()
+
+    def add(index, cand):
+        if index in selected_indexes:
+            return
+        selected_indexes.add(index)
+        selected.append(cand)
+
+    primary = max(1, int(limit * 0.70))
+    for index, cand in ranked[:primary]:
+        add(index, cand)
+
+    by_strategy = {}
+    for index, cand in ranked:
+        strategy = (cand.get("strategy") or "").split("_right", 1)[0].split("_top", 1)[0]
+        by_strategy.setdefault(strategy, []).append((index, cand))
+    for bucket in by_strategy.values():
+        for index, cand in bucket[:3]:
+            add(index, cand)
+            if len(selected) >= limit:
+                break
+        if len(selected) >= limit:
+            break
+
+    if len(selected) < limit:
+        for index, cand in ranked:
+            add(index, cand)
+            if len(selected) >= limit:
+                break
+    return selected[:limit]
+
+
 def _v2_lane_recipe_candidates(remaining, sheet_w, sheet_h, kerf, *, stats=None, deadline=None, allow_expensive=False):
     """Generate count-based guillotine lane recipes.
 
@@ -11244,64 +11316,83 @@ def _v2_generate_candidates(remaining, sheet_w, sheet_h, kerf, seed_limit, *, al
     candidates = []
     remaining_sheet_lb = _area_lower_bound(remaining, sheet_w, sheet_h)
     column_allow_expensive = bool(allow_expensive and remaining_sheet_lb <= 14)
+    pool_limit = 1800 if allow_expensive else 720
+
+    def cap_pool():
+        if len(candidates) > pool_limit:
+            candidates[:] = _prune_candidate_pool(candidates, sheet_w, sheet_h, pool_limit)
+
     candidates.extend(_v2_guillotine_mosaic_candidates(
         remaining, sheet_w, sheet_h, kerf,
         stats=stats, deadline=deadline, allow_expensive=allow_expensive,
     ))
+    cap_pool()
     if column_allow_expensive and not _deadline_hit(deadline, 0.02):
         candidates.extend(_v2_transposed_lane_run_candidates(
             remaining, sheet_w, sheet_h, kerf,
             stats=stats, deadline=deadline, allow_expensive=column_allow_expensive,
         ))
+        cap_pool()
     if (remaining_sheet_lb <= 6 or len(remaining) <= 140) and not _deadline_hit(deadline, 0.02):
         candidates.extend(_v2_transposed_exact_lane_partition_candidates(
             remaining, sheet_w, sheet_h, kerf,
             stats=stats, deadline=deadline,
             allow_expensive=bool(column_allow_expensive or len(remaining) <= 100),
         ))
+        cap_pool()
     if (remaining_sheet_lb <= 5 or len(remaining) <= 120) and not _deadline_hit(deadline, 0.02):
         candidates.extend(_v2_exact_lane_partition_candidates(
             remaining, sheet_w, sheet_h, kerf,
             stats=stats, deadline=deadline,
             allow_expensive=bool(column_allow_expensive or len(remaining) <= 90),
         ))
+        cap_pool()
     if column_allow_expensive and not _deadline_hit(deadline, 0.02):
         candidates.extend(_v2_lane_run_candidates(
             remaining, sheet_w, sheet_h, kerf,
             stats=stats, deadline=deadline, allow_expensive=False,
         ))
+        cap_pool()
     candidates.extend(_v2_transposed_simple_lane_pair_candidates(
         remaining, sheet_w, sheet_h, kerf,
         stats=stats, deadline=deadline, allow_expensive=column_allow_expensive,
     ))
+    cap_pool()
     candidates.extend(_v2_simple_lane_pair_candidates(
         remaining, sheet_w, sheet_h, kerf,
         stats=stats, deadline=deadline, allow_expensive=column_allow_expensive,
     ))
+    cap_pool()
     candidates.extend(_v2_transposed_lane_recipe_candidates(
         remaining, sheet_w, sheet_h, kerf,
         stats=stats, deadline=deadline, allow_expensive=column_allow_expensive,
     ))
+    cap_pool()
     candidates.extend(_v2_lane_recipe_candidates(
         remaining, sheet_w, sheet_h, kerf,
         stats=stats, deadline=deadline, allow_expensive=column_allow_expensive,
     ))
+    cap_pool()
     candidates.extend(_v2_transposed_column_stack_candidates(
         remaining, sheet_w, sheet_h, kerf,
         stats=stats, deadline=deadline, allow_expensive=column_allow_expensive,
     ))
+    cap_pool()
     candidates.extend(_v2_column_stack_candidates(
         remaining, sheet_w, sheet_h, kerf,
         stats=stats, deadline=deadline, allow_expensive=column_allow_expensive,
     ))
+    cap_pool()
     candidates.extend(_v2_group_mosaic_candidates(
         remaining, sheet_w, sheet_h, kerf,
         stats=stats, deadline=deadline, allow_expensive=allow_expensive,
     ))
+    cap_pool()
     candidates.extend(_v2_repeat_sheet_candidates(
         remaining, sheet_w, sheet_h, kerf,
         stats=stats, deadline=deadline, allow_top_aligned=allow_expensive,
     ))
+    cap_pool()
     remaining_set = {int(p["id"]) for p in remaining}
     return _dedupe_candidates(candidates, remaining_set)
 
@@ -12034,6 +12125,9 @@ def search_v2(
     best_trace = ()
     state_counter = 0
     max_steps = max(1, len(pieces))
+    beam_limit = max(1, int(beam_width or 160))
+    next_state_soft_limit = max(beam_limit * 8, 320)
+    next_state_hard_limit = max(beam_limit * 14, 640)
 
     def emit_progress(event):
         if not progress_callback or best_complete is None:
@@ -12048,6 +12142,23 @@ def search_v2(
             })
         except Exception:
             pass
+
+    def compact_next_states(states, limit):
+        if len(states or []) <= limit:
+            return states
+        ranked = []
+        seen = {}
+        for state in states:
+            remaining = _remaining_items(pieces_by_id, state["remaining"])
+            key = _partial_state_key(state["sheets"], remaining, sheet_w, sheet_h, kerf)
+            sig = (state["remaining"], len(state["sheets"]))
+            previous = seen.get(sig)
+            if previous is None or key < previous[0]:
+                seen[sig] = (key, state)
+        for key, state in seen.values():
+            ranked.append((key, state.get("_order", 0), state))
+        ranked.sort(key=lambda item: (item[0], item[1]))
+        return [state for _key, _order, state in ranked[:max(1, int(limit or beam_limit))]]
 
     if pieces and not _deadline_hit(deadline, 0.50):
         if _cancel_requested(cancel_callback):
@@ -12172,6 +12283,8 @@ def search_v2(
                     "trace": new_trace,
                     "_order": state_counter,
                 })
+                if len(next_states) > next_state_hard_limit:
+                    next_states = compact_next_states(next_states, next_state_soft_limit)
                 made_progress = True
 
         if stats["time_budget_hit"] or stats.get("cancelled"):
@@ -12185,7 +12298,7 @@ def search_v2(
 
         ranked = []
         seen = {}
-        for state in next_states:
+        for state in compact_next_states(next_states, max(next_state_soft_limit, beam_limit)):
             remaining = _remaining_items(pieces_by_id, state["remaining"])
             key = _partial_state_key(state["sheets"], remaining, sheet_w, sheet_h, kerf)
             sig = (state["remaining"], len(state["sheets"]))
@@ -12195,7 +12308,7 @@ def search_v2(
         for key, state in seen.values():
             ranked.append((key, state.get("_order", 0), state))
         ranked.sort(key=lambda item: (item[0], item[1]))
-        beam = [state for _key, _order, state in ranked[:max(1, int(beam_width or 160))]]
+        beam = [state for _key, _order, state in ranked[:beam_limit]]
 
         if best_complete is not None:
             min_possible = min(
